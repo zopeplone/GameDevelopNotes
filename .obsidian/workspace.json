@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "C++/内存/右值引用.md",
+                "file": "UE知识/Gameplay系统/Level和World.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "右值引用"
+              "title": "Level和World"
             }
           }
         ]
@@ -94,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "C++/内存/右值引用.md",
+                "file": "UE知识/对象系统/Cast.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "右值引用 的反向链接列表"
+              "title": "Cast 的反向链接列表"
             }
           },
           {
@@ -113,12 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "C++/内存/右值引用.md",
+                "file": "UE知识/对象系统/Cast.md",
                 "linksCollapsed": true,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "右值引用 的出链列表"
+              "title": "Cast 的出链列表"
             }
           },
           {
@@ -156,13 +156,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "C++/内存/右值引用.md",
+                "file": "UE知识/Gameplay系统/Level和World.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "右值引用 的大纲"
+              "title": "Level和World 的大纲"
             }
           },
           {
@@ -180,26 +180,48 @@
       }
     ],
     "direction": "horizontal",
-    "width": 229.5
+    "width": 343.5
   },
   "left-ribbon": {
     "hiddenItems": {
-      "copilot:Open Copilot Chat": false,
-      "obsidian-git:Open Git source control": false,
-      "obsidian-excalidraw-plugin:新建绘图文件": false,
+      "bases:新建数据库": false,
       "switcher:打开快速切换": false,
       "graph:查看关系图谱": false,
       "canvas:新建白板": false,
       "daily-notes:打开/创建今天的日记": false,
       "templates:插入模板": false,
       "command-palette:打开命令面板": false,
-      "bases:创建新数据库": false,
-      "obsidian-local-images-plus:Local Images Plus  0.16.4\r\nLocalize attachments (plugin folder)": false,
-      "terminal:Open terminal": false
+      "obsidian-git:Open Git source control": false,
+      "obsidian-excalidraw-plugin:新建绘图文件": false,
+      "obsidian-local-images-plus:Local Images Plus  0.16.4\r\nLocalize attachments (plugin folder)": false
     }
   },
   "active": "4fe3544d28420740",
   "lastOpenFiles": [
+    "C++/内存/右值引用.md",
+    "UE知识/Gameplay系统/Level和World.md",
+    "C++/内存/内存分区.md",
+    "UE知识/对象系统/UObject.md",
+    "UE知识/对象系统/UHT.md",
+    "UE知识/对象系统/Cast.md",
+    "UE知识/对象系统/反射.md",
+    "UE知识/Gameplay系统/引擎初始化.md",
+    "UE知识/内存管理/垃圾回收.md",
+    "UE知识/Gameplay系统/Actor与ActorComponent.md",
+    "UE知识/内存管理/智能指针.md",
+    "UE知识/Gameplay系统/Drawing 2026-02-17 03.02.13.excalidraw.md",
+    "UE知识/Gameplay系统/未命名.canvas",
+    "C++/内存/内存分区.md.tmp.94084.1771250066614",
+    "C++/内存/内存分区.md.tmp.94084.1771249955297",
+    "C++/内存/内存分区.md.tmp.94084.1771249835893",
+    "C++/内存/assets/2e7a1d647be9f5e9afb035a65fba1124_MD5.jpg",
+    "C++/内存/assets/Pasted image 20260216213346.png",
+    "C++/多态",
+    "C++/内存/右值引用.md.tmp.3412.1771241407237",
+    "C++/内存/右值引用.md.tmp.3412.1771241397112",
+    "C++/内存/右值引用.md.tmp.3412.1771241386455",
+    "C++/内存/右值引用.md.tmp.3412.1771241369609",
+    "C++/内存/右值引用.md.tmp.3412.1771241358634",
     "C++/模板",
     "C++/内存/assets/4cf19240c43605a54baeec02bd7dbe01_MD5.jpg",
     "C++/内存/assets/Pasted image 20260213200023.png",
@@ -209,28 +231,8 @@
     "C++/内存/assets/Pasted image 20260213195542.png",
     "C++/内存/assets/2644ad2b3217e3ce840562343e8a5807_MD5.jpg",
     "C++/内存/assets/Pasted image 20260213195318.png",
-    "C++/内存/assets",
-    "UE知识/内存管理/智能指针.md",
-    "UE知识/内存管理/垃圾回收.md",
-    "C++/面试题",
-    "C++/内存/右值引用.md",
-    "UE知识/内存管理",
-    "UE知识/Gameplay系统/引擎初始化.md",
     "copilot/copilot-conversations/在这里的纯C++要如何实现中，告诉我和UE的对象系统的区别在@20260213_185030.md",
-    "UE知识/Gameplay系统/assets/d32488fa2d169f29fca866a56455a4c1_MD5.jpg",
-    "UE知识/Gameplay系统/assets/783dd679c5c055fcc52dd7a5da4999aa_MD5.jpg",
-    "UE知识/Gameplay系统/assets",
-    "UE知识/对象系统/Cast.md",
-    "UE知识/Gameplay系统",
-    "UE知识/对象系统/UObject.md",
     "PlayerController.md",
-    "UE知识/对象系统/UHT.md",
-    "UE知识/对象系统/反射.md",
-    "copilot/copilot-conversations",
-    "copilot",
-    "C++/内存",
-    "C++/多态",
-    "C++/语法",
     "随笔/Temp.md",
     "欢迎.md"
   ]

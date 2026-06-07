@@ -172,16 +172,16 @@ inline bool ToLocal(v8::internal::MaybeHandle<v8::internal::Object> maybe,
 ```
 So lets take a look at `Execution::Call` which can be found in `execution/execution.cc`
 and it calls:
-```c++
+```cpp
 return Invoke(isolate, InvokeParams::SetUpForCall(isolate, callable, receiver, argc, argv));
 ```
 `SetUpForCall` will return an `InvokeParams`.
 TODO: Take a closer look at InvokeParams.
-```c++
+```cpp
 V8_WARN_UNUSED_RESULT MaybeHandle<Object> Invoke(Isolate* isolate,              
                                                  const InvokeParams& params) {
 ```
-```c++
+```cpp
 Handle<Object> receiver = params.is_construct                             
                                     ? isolate->factory()->the_hole_value()         
                                     : params.receiver; 
@@ -189,19 +189,19 @@ Handle<Object> receiver = params.is_construct
 In our case `is_construct` is false as we are not using `new` and the receiver,
 the `this` in the function should be set to the receiver that we passed in. After
 that we have `Builtins::InvokeApiFunction` 
-```c++
+```cpp
 auto value = Builtins::InvokeApiFunction(                                 
           isolate, params.is_construct, function, receiver, params.argc,        
           params.argv, Handle<HeapObject>::cast(params.new_target)); 
 ```
 
-```c++
+```cpp
 result = HandleApiCallHelper<false>(isolate, function, new_target,        
                                     fun_data, receiver, arguments);
 ```
 
 `api-arguments-inl.h` has:
-```c++
+```cpp
 FunctionCallbackArguments::Call(CallHandlerInfo handler) {
   ...
   ExternalCallbackScope call_scope(isolate, FUNCTION_ADDR(f));                  
@@ -214,13 +214,13 @@ The call to f(info) is what invokes the callback, which is just a normal
 function call. 
 
 Back in `HandleApiCallHelper` we have:
-```c++
+```cpp
 Handle<Object> result = custom.Call(call_data);                             
                                                                                 
 RETURN_EXCEPTION_IF_SCHEDULED_EXCEPTION(isolate, Object);
 ```
 `RETURN_EXCEPTION_IF_SCHEDULED_EXCEPTION` expands to:
-```c++
+```cpp
 Handle<Object> result = custom.Call(call_data);                             
 do { 
   Isolate* __isolate__ = (isolate); 
@@ -233,7 +233,7 @@ do {
 ```
 Notice that if there was an exception an empty object is returned.
 Later in `Invoke` in `execution.cc`a:
-```c++
+```cpp
   auto value = Builtins::InvokeApiFunction(                                 
           isolate, params.is_construct, function, receiver, params.argc,        
           params.argv, Handle<HeapObject>::cast(params.new_target));            
@@ -254,7 +254,7 @@ exception to be triggered?
 ### Address
 `Address` can be found in `include/v8-internal.h`:
 
-```c++
+```cpp
 typedef uintptr_t Address;
 ```
 `uintptr_t` is an optional type specified in `cstdint` and is capable of storing
@@ -264,18 +264,18 @@ can be converted to this type (and back).
 ### TaggedImpl
 This class is declared in `src/objects/tagged-impl.h and has a single private
 member which is declared as:
-```c++
+```cpp
  public
   constexpr StorageType ptr() const { return ptr_; }
  private:
   StorageType ptr_;
 ```
 An instance can be created using:
-```c++
+```cpp
   i::TaggedImpl<i::HeapObjectReferenceType::STRONG, i::Address>  tagged{};
 ```
 Storage type can also be `Tagged_t` which is defined in globals.h:
-```c++
+```cpp
  using Tagged_t = uint32_t;
 ```
 It looks like it can be a different value when using pointer compression.
@@ -284,7 +284,7 @@ See [tagged_test.cc](./test/tagged_test.cc) for an example.
 
 ### Object
 This class extends TaggedImpl:
-```c++
+```cpp
 class Object : public TaggedImpl<HeapObjectReferenceType::STRONG, Address> {       
 ```
 An Object can be created using the default constructor, or by passing in an 
@@ -311,7 +311,7 @@ contains the value directly, for example a small integer:
 See [object_test.cc](./test/object_test.cc) for an example.
 
 ### ObjectSlot
-```c++
+```cpp
   i::Object obj{18};
   i::FullObjectSlot slot{&obj};
 ```
@@ -327,7 +327,7 @@ See [objectslot_test.cc](./test/objectslot_test.cc) for an example.
 
 ### Maybe
 A Maybe is like an optional which can either hold a value or nothing.
-```c++
+```cpp
 template <class T>                                                              
 class Maybe {
  public:
@@ -342,7 +342,7 @@ class Maybe {
 ```
 I first thought that name `Just` was a little confusing but if you read this
 like:
-```c++
+```cpp
   bool cond = true;
   Maybe<int> maybe = cond ? Just<int>(10) : Nothing<int>();
 ```
@@ -356,7 +356,7 @@ of signaling this.
 See [maybe_test.cc](./test/maybe_test.cc) for an example.
 
 ### MaybeLocal
-```c++
+```cpp
 template <class T>                                                              
 class MaybeLocal {
  public:                                                                        
@@ -379,7 +379,7 @@ See [maybelocal_test.cc](./test/maybelocal_test.cc) for an example.
 
 ### Data
 Is the super class of all objects that can exist the V8 heap:
-```c++
+```cpp
 class V8_EXPORT Data {                                                          
  private:                                                                       
   Data();                                                                       
@@ -390,7 +390,7 @@ class V8_EXPORT Data {
 Value extends `Data` and adds a number of methods that check if a Value
 is of a certain type, like `IsUndefined()`, `IsNull`, `IsNumber` etc.
 It also has useful methods to convert to a Local<T>, for example:
-```c++
+```cpp
 V8_WARN_UNUSED_RESULT MaybeLocal<Number> ToNumber(Local<Context> context) const;
 V8_WARN_UNUSED_RESULT MaybeLocal<String> ToNumber(Local<String> context) const;
 ...
@@ -404,7 +404,7 @@ difference is that Handles acts as a layer of abstraction and can be relocated
 by the garbage collector.
 Can be found in `src/handles/handles.h`.
 
-```c++
+```cpp
 class HandleBase {  
  ...
  protected:
@@ -461,19 +461,19 @@ from the stack maintained by the HandleScope which makes objects to which the
 handles point being eligible for deletion from the heap by the GC.
 
 A HandleScope only has three members:
-```c++
+```cpp
   internal::Isolate* isolate_;
   internal::Address* prev_next_;
   internal::Address* prev_limit_;
 ```
 
 Lets take a closer look at what happens when we construct a HandleScope:
-```c++
+```cpp
   v8::HandleScope handle_scope{isolate_};
 ```
 The constructor call will end up in `src/api/api.cc` and the constructor simply
 delegates to `Initialize`:
-```c++
+```cpp
 HandleScope::HandleScope(Isolate* isolate) { Initialize(isolate); }
 
 void HandleScope::Initialize(Isolate* isolate) {
@@ -487,12 +487,12 @@ void HandleScope::Initialize(Isolate* isolate) {
 }
 ```
 Every `v8::internal::Isolate` has member of type HandleScopeData:
-```c++
+```cpp
 HandleScopeData* handle_scope_data() { return &handle_scope_data_; }
 HandleScopeData handle_scope_data_;
 ```
 HandleScopeData is a struct defined in `src/handles/handles.h`:
-```c++
+```cpp
 struct HandleScopeData final {
   Address* next;
   Address* limit;
@@ -518,11 +518,11 @@ So with a HandleScope created, how does a Local<T> interact with this instance?
 When a Local<T> is created this will/might go through FactoryBase::NewStruct
 which will allocate a new Map and then create a Handle for the InstanceType
 being created:
-```c++
+```cpp
 Handle<Struct> str = handle(Struct::cast(result), isolate()); 
 ```
 This will land in the constructor Handle<T>src/handles/handles-inl.h
-```c++
+```cpp
 template <typename T>                                                           
 Handle<T>::Handle(T object, Isolate* isolate): HandleBase(object.ptr(), isolate) {}
 
@@ -532,7 +532,7 @@ HandleBase::HandleBase(Address object, Isolate* isolate)
 Notice that `object.ptr()` is used to pass the Address to HandleBase.
 And also notice that HandleBase sets its location_ to the result of HandleScope::GetHandle.
 
-```c++
+```cpp
 Address* HandleScope::GetHandle(Isolate* isolate, Address value) {              
   DCHECK(AllowHandleAllocation::IsAllowed());                                   
   HandleScopeData* data = isolate->handle_scope_data();                         
@@ -542,7 +542,7 @@ Address* HandleScope::GetHandle(Isolate* isolate, Address value) {
 ```
 Which will call `CreateHandle` in this case and this function will retrieve the
 current isolate's handle_scope_data:
-```c++
+```cpp
   HandleScopeData* data = isolate->handle_scope_data();                         
   Address* result = data->next;                                                 
   if (result == data->limit) {                                                  
@@ -552,13 +552,13 @@ current isolate's handle_scope_data:
 In this case both next and limit will be 0x0 so Extend will be called.
 Extend will also get the isolates handle_scope_data and check the current level
 and after that get the isolates HandleScopeImplementer:
-```c++
+```cpp
   HandleScopeImplementer* impl = isolate->handle_scope_implementer();           
 ```
 `HandleScopeImplementer` is declared in `src/api/api.h`
 
 HandleScope:CreateHandle will get the handle_scope_data from the isolate:
-```c++
+```cpp
 Address* HandleScope::CreateHandle(Isolate* isolate, Address value) {
   HandleScopeData* data = isolate->handle_scope_data();
   if (result == data->limit) {
@@ -588,7 +588,7 @@ returns. This is what EscapableHandleScope is for, it enable the value to be
 placed in the enclosing handle scope to allow it to survive. When the enclosing
 HandleScope goes out of scope it will be cleaned up.
 
-```c++
+```cpp
 class V8_EXPORT EscapableHandleScope : public HandleScope {                        
  public:                                                                           
   explicit EscapableHandleScope(Isolate* isolate);
@@ -611,7 +611,7 @@ class V8_EXPORT EscapableHandleScope : public HandleScope {
 ```
 
 From `api.cc`
-```c++
+```cpp
 EscapableHandleScope::EscapableHandleScope(Isolate* v8_isolate) {
   i::Isolate* isolate = reinterpret_cast<i::Isolate*>(v8_isolate);
   escape_slot_ = CreateHandle(isolate, i::ReadOnlyRoots(isolate).the_hole_value().ptr());
@@ -625,13 +625,13 @@ can later set a value for that pointer/address which it want to be escaped.
 Later when that HandleScope goes out of scope it will be cleaned up.
 It then calls Initialize just like a normal HandleScope would.
 
-```c++
+```cpp
 i::Address* HandleScope::CreateHandle(i::Isolate* isolate, i::Address value) {
   return i::HandleScope::CreateHandle(isolate, value);
 }
 ```
 From `handles-inl.h`:
-```c++
+```cpp
 Address* HandleScope::CreateHandle(Isolate* isolate, Address value) {
   DCHECK(AllowHandleAllocation::IsAllowed());
   HandleScopeData* data = isolate->handle_scope_data();
@@ -651,7 +651,7 @@ Address* HandleScope::CreateHandle(Isolate* isolate, Address value) {
 ```
 
 When Escape is called the following happens (v8.h):
-```c++
+```cpp
 template <class T>
   V8_INLINE Local<T> Escape(Local<T> value) {
     internal::Address* slot = Escape(reinterpret_cast<internal::Address*>(*value));
@@ -659,7 +659,7 @@ template <class T>
   }
 ```
 An the EscapeableHandleScope::Escape (api.cc):
-```c++
+```cpp
 i::Address* EscapableHandleScope::Escape(i::Address* escape_value) {
   i::Heap* heap = reinterpret_cast<i::Isolate*>(GetIsolate())->heap();
   Utils::ApiCheck(i::Object(*escape_slot_).IsTheHole(heap->isolate()),
@@ -689,7 +689,7 @@ TODO:
 
 ### Local
 Has a single member `val_` which is of type pointer to `T`:
-```c++
+```cpp
 template <class T> class Local { 
 ...
  private:
@@ -697,7 +697,7 @@ template <class T> class Local {
 }
 ```
 Notice that this is a pointer to T. We could create a local using:
-```c++
+```cpp
   v8::Local<v8::Value> empty_value;
 ```
 
@@ -705,12 +705,12 @@ So a Local contains a pointer to type T. We can access this pointer using
 `operator->` and `operator*`.
 
 We can cast from a subtype to a supertype using Local::Cast:
-```c++
+```cpp
 v8::Local<v8::Number> nr = v8::Local<v8::Number>(v8::Number::New(isolate_, 12));
 v8::Local<v8::Value> val = v8::Local<v8::Value>::Cast(nr);
 ```
 And there is also the 
-```c++
+```cpp
 v8::Local<v8::Value> val2 = nr.As<v8::Value>();
 ```
 
@@ -724,18 +724,18 @@ $ nm -C libv8_monolith.a | grep Print_Object
 ```
 Notice that this function does not have a namespace.
 We can use this as:
-```c++
+```cpp
 extern void _v8_internal_Print_Object(void* object);
 
 _v8_internal_Print_Object(*((v8::internal::Object**)(*global)));
 ```
 Lets take a closer look at the above:
-```c++
+```cpp
   v8::internal::Object** gl = ((v8::internal::Object**)(*global));
 ```
 We use the dereference operator to get the value of a Local (*global), which is
 just of type `T*`, a pointer to the type the Local:
-```c++
+```cpp
 template <class T>
 class Local {
   ...
@@ -755,7 +755,7 @@ An instance of `v8::internal::Object` only has a single data member which is a
 field named `ptr_` of type `Address`:
 
 `src/objects/objects.h`:
-```c++
+```cpp
 class Object : public TaggedImpl<HeapObjectReferenceType::STRONG, Address> {
  public:
   constexpr Object() : TaggedImpl(kNullAddress) {}
@@ -774,7 +774,7 @@ class Object : public TaggedImpl<HeapObjectReferenceType::STRONG, Address> {
 ```
 Lets take a look at one of these functions and see how it is implemented. For
 example in the OBJECT_TYPE_LIST we have:
-```c++
+```cpp
 #define OBJECT_TYPE_LIST(V) \
   V(LayoutDescriptor)       \
   V(Primitive)              \
@@ -782,18 +782,18 @@ example in the OBJECT_TYPE_LIST we have:
   V(Numeric)
 ```
 So the object class will have a function that looks like:
-```c++
+```cpp
 inline bool IsNumber() const;
 inline bool IsNumber(const Isolate* isolate) const;
 ```
 And in src/objects/objects-inl.h we will have the implementations:
-```c++
+```cpp
 bool Object::IsNumber() const {
   return IsHeapObject() && HeapObject::cast(*this).IsNumber();
 }
 ```
 `IsHeapObject` is defined in TaggedImpl:
-```c++
+```cpp
   constexpr inline bool IsHeapObject() const { return IsStrong(); }
 
   constexpr inline bool IsStrong() const {
@@ -805,7 +805,7 @@ bool Object::IsNumber() const {
 ```
 
 The macro can be found in src/common/globals.h:
-```c++
+```cpp
 #define HAS_STRONG_HEAP_OBJECT_TAG(value)                          \
   (((static_cast<i::Tagged_t>(value) & ::i::kHeapObjectTagMask) == \
     ::i::kHeapObjectTag))
@@ -818,7 +818,7 @@ using Tagged_t = Address;
 ```
 
 `src/objects/tagged-impl.h`:
-```c++
+```cpp
 template <HeapObjectReferenceType kRefType, typename StorageType>
 class TaggedImpl {
 
@@ -834,18 +834,18 @@ So the following is telling the compiler to treat the value of our Local,
 a memory location that adhers to the layout of an `v8::internal::Object` type,
 which we know now has a `prt_` member. And we want to dereference it and pass
 it into the function.
-```c++
+```cpp
 _v8_internal_Print_Object(*((v8::internal::Object**)(*global)));
 ```
 
 ### ObjectTemplate
 But I'm still missing the connection between ObjectTemplate and object.
 When we create it we use:
-```c++
+```cpp
 Local<ObjectTemplate> global = ObjectTemplate::New(isolate);
 ```
 In `src/api/api.cc` we have:
-```c++
+```cpp
 static Local<ObjectTemplate> ObjectTemplateNew(
     i::Isolate* isolate, v8::Local<FunctionTemplate> constructor,
     bool do_not_cache) {
@@ -862,7 +862,7 @@ static Local<ObjectTemplate> ObjectTemplateNew(
 ```
 What is a `Struct` in this context?  
 `src/objects/struct.h`
-```c++
+```cpp
 #include "torque-generated/class-definitions-tq.h"
 
 class Struct : public TorqueGeneratedStruct<Struct, HeapObject> {
@@ -878,7 +878,7 @@ Assembler C++ headers and sources before compiling the main source files. There 
 and there is a section about this in `Building V8`.
 The macro `TQ_OBJECT_CONSTRUCTORS` can be found in `src/objects/object-macros.h`
 and expands to:
-```c++
+```cpp
   constexpr Struct() = default;
 
  protected:
@@ -907,7 +907,7 @@ extern class Struct extends HeapObject {
 ```
 
 `NewStruct` can be found in `src/heap/factory-base.cc`
-```c++
+```cpp
 template <typename Impl>
 HandleFor<Impl, Struct> FactoryBase<Impl>::NewStruct(
     InstanceType type, AllocationType allocation) {
@@ -921,7 +921,7 @@ HandleFor<Impl, Struct> FactoryBase<Impl>::NewStruct(
 ```
 Every object that is stored on the v8 heap has a Map (`src/objects/map.h`) that
 describes the structure of the object being stored.
-```c++
+```cpp
 class Map : public HeapObject {
 ```
 
@@ -1027,7 +1027,7 @@ not use ICU you still need to call InitializeICU :
 
 ### Local
 
-```c++
+```cpp
 Local<String> script_name = ...;
 ```
 So what is script_name. Well it is an object reference that is managed by the v8 GC.
@@ -1041,7 +1041,7 @@ will remove all the Local instances.
 
 The `Local` class (in `include/v8.h`) only has one member which is of type
 pointer to the type `T`. So for the above example it would be:
-```c++
+```cpp
   String* val_;
 ```
 You can find the available operations for a Local in `include/v8.h`.
@@ -1089,11 +1089,11 @@ $ ./test/persistent-object_test --gtest_filter=PersistentTest.value
 ```
 Now, to create an instance of Persistent we need a Local<T> instance or the
 Persistent instance will just be empty.
-```c++
+```cpp
 Local<Object> o = Local<Object>::New(isolate_, Object::New(isolate_));
 ```
 `Local<Object>::New` can be found in `src/api/api.cc`:
-```c++
+```cpp
 Local<v8::Object> v8::Object::New(Isolate* isolate) {
   i::Isolate* i_isolate = reinterpret_cast<i::Isolate*>(isolate);
   LOG_API(i_isolate, Object, New);
@@ -1106,20 +1106,20 @@ Local<v8::Object> v8::Object::New(Isolate* isolate) {
 The first thing that happens is that the public Isolate pointer is cast to an
 pointer to the internal `Isolate` type.
 `LOG_API` is a macro in the same source file (src/api/api.cc):
-```c++
+```cpp
 #define LOG_API(isolate, class_name, function_name)                           \
   i::RuntimeCallTimerScope _runtime_timer(                                    \
       isolate, i::RuntimeCallCounterId::kAPI_##class_name##_##function_name); \
   LOG(isolate, ApiEntryCall("v8::" #class_name "::" #function_name))
 ```
 If our case the preprocessor would expand that to:
-```c++
+```cpp
   i::RuntimeCallTimerScope _runtime_timer(
       isolate, i::RuntimeCallCounterId::kAPI_Object_New);
   LOG(isolate, ApiEntryCall("v8::Object::New))
 ```
 `LOG` is a macro that can be found in `src/log.h`:
-```c++
+```cpp
 #define LOG(isolate, Call)                              \
   do {                                                  \
     v8::internal::Logger* logger = (isolate)->logger(); \
@@ -1127,12 +1127,12 @@ If our case the preprocessor would expand that to:
   } while (false)
 ```
 And this would expand to:
-```c++
+```cpp
   v8::internal::Logger* logger = isolate->logger();
   if (logger->is_logging()) logger->ApiEntryCall("v8::Object::New");
 ```
 So with the LOG_API macro expanded we have:
-```c++
+```cpp
 Local<v8::Object> v8::Object::New(Isolate* isolate) {
   i::Isolate* i_isolate = reinterpret_cast<i::Isolate*>(isolate);
   i::RuntimeCallTimerScope _runtime_timer( isolate, i::RuntimeCallCounterId::kAPI_Object_New);
@@ -1146,14 +1146,14 @@ Local<v8::Object> v8::Object::New(Isolate* isolate) {
 }
 ```
 Next we have `ENTER_V8_NO_SCRIPT_NO_EXCEPTION`:
-```c++
+```cpp
 #define ENTER_V8_NO_SCRIPT_NO_EXCEPTION(isolate)                    \
   i::VMState<v8::OTHER> __state__((isolate));                       \
   i::DisallowJavascriptExecutionDebugOnly __no_script__((isolate)); \
   i::DisallowExceptions __no_exceptions__((isolate))
 ```
 So with the macros expanded we have:
-```c++
+```cpp
 Local<v8::Object> v8::Object::New(Isolate* isolate) {
   i::Isolate* i_isolate = reinterpret_cast<i::Isolate*>(isolate);
   i::RuntimeCallTimerScope _runtime_timer( isolate, i::RuntimeCallCounterId::kAPI_Object_New);
@@ -1175,7 +1175,7 @@ TODO: Look closer at `VMState`.
 First, `i_isolate->object_function()` is called and the result passed to
 `NewJSObject`. `object_function` is generated by a macro named 
 `NATIVE_CONTEXT_FIELDS`:
-```c++
+```cpp
 #define NATIVE_CONTEXT_FIELD_ACCESSOR(index, type, name)     \
   Handle<type> Isolate::name() {                             \
     return Handle<type>(raw_native_context()->name(), this); \
@@ -1186,13 +1186,13 @@ First, `i_isolate->object_function()` is called and the result passed to
 NATIVE_CONTEXT_FIELDS(NATIVE_CONTEXT_FIELD_ACCESSOR)
 ```
 `NATIVE_CONTEXT_FIELDS` is a macro in `src/contexts` and it c
-```c++
+```cpp
 #define NATIVE_CONTEXT_FIELDS(V)                                               \
 ...                                                                            \
   V(OBJECT_FUNCTION_INDEX, JSFunction, object_function)                        \
 ```
 
-```c++
+```cpp
   Handle<type> Isolate::object_function() {
     return Handle<JSFunction>(raw_native_context()->object_function(), this);
   }
@@ -1203,7 +1203,7 @@ NATIVE_CONTEXT_FIELDS(NATIVE_CONTEXT_FIELD_ACCESSOR)
 ```
 I'm not clear on the different types of context, there is a native context, a "normal/public" context.
 In `src/contexts-inl.h` we have the native_context function:
-```c++
+```cpp
 Context* Context::native_context() const {
   Object* result = get(NATIVE_CONTEXT_INDEX);
   DCHECK(IsBootstrappingOrNativeContext(this->GetIsolate(), result));
@@ -1214,7 +1214,7 @@ Context* Context::native_context() const {
 is the index into the array where the native context is stored.
 
 Now, lets take a closer look at `NewJSObject`. If you search for NewJSObject in `src/heap/factory.cc`:
-```c++
+```cpp
 Handle<JSObject> Factory::NewJSObject(Handle<JSFunction> constructor, PretenureFlag pretenure) {
   JSFunction::EnsureHasInitialMap(constructor);
   Handle<Map> map(constructor->initial_map(), isolate());
@@ -1222,7 +1222,7 @@ Handle<JSObject> Factory::NewJSObject(Handle<JSFunction> constructor, PretenureF
 }
 ```
 `NewJSObjectFromMap` 
-```c++
+```cpp
 ...
   HeapObject* obj = AllocateRawWithAllocationSite(map, pretenure, allocation_site);
 ```
@@ -1237,7 +1237,7 @@ Lets take a look at when a map is created.
 (lldb) br s -f map_test.cc -l 63
 ```
 
-```c++
+```cpp
 Handle<Map> Factory::NewMap(InstanceType type,
                             int instance_size,
                             ElementsKind elements_kind,
@@ -1251,7 +1251,7 @@ Handle<Map> Factory::NewMap(InstanceType type,
 ```
 We can see that the above is calling `AllocateRawWithRetryOrFail` on the heap 
 instance passing a size of `88` and specifying the `MAP_SPACE`:
-```c++
+```cpp
 HeapObject* Heap::AllocateRawWithRetryOrFail(int size, AllocationSpace space,
                                              AllocationAlignment alignment) {
   AllocationResult alloc;
@@ -1277,12 +1277,12 @@ The default value for `alignment` is `kWordAligned`. Reading the docs in the hea
 will try to perform an allocation of size `88` in the `MAP_SPACE` and if it fails a full GC will be performed
 and the allocation retried.
 Lets take a look at `AllocateRawWithLigthRetry`:
-```c++
+```cpp
   AllocationResult alloc = AllocateRaw(size, space, alignment);
 ```
 `AllocateRaw` can be found in `src/heap/heap-inl.h`. There are different paths that will be taken depending on the
 `space` parameteter. Since it is `MAP_SPACE` in our case we will focus on that path:
-```c++
+```cpp
 AllocationResult Heap::AllocateRaw(int size_in_bytes, AllocationSpace space, AllocationAlignment alignment) {
   ...
   HeapObject* object = nullptr;
@@ -1296,11 +1296,11 @@ AllocationResult Heap::AllocateRaw(int size_in_bytes, AllocationSpace space, All
 }
 ```
 `map_space_` is a private member of Heap (src/heap/heap.h):
-```c++
+```cpp
 MapSpace* map_space_;
 ```
 `AllocateRawUnaligned` can be found in `src/heap/spaces-inl.h`:
-```c++
+```cpp
 AllocationResult PagedSpace::AllocateRawUnaligned( int size_in_bytes, UpdateSkipList update_skip_list) {
   if (!EnsureLinearAllocationArea(size_in_bytes)) {
     return AllocationResult::Retry(identity());
@@ -1313,7 +1313,7 @@ AllocationResult PagedSpace::AllocateRawUnaligned( int size_in_bytes, UpdateSkip
 ```
 The default value for `update_skip_list` is `UPDATE_SKIP_LIST`.
 So lets take a look at `AllocateLinearly`:
-```c++
+```cpp
 HeapObject* PagedSpace::AllocateLinearly(int size_in_bytes) {
   Address current_top = allocation_info_.top();
   Address new_top = current_top + size_in_bytes;
@@ -1339,14 +1339,14 @@ to read/write to memory locations. The indexes are mostly in the form of enum fi
 of the type.
 
 Next, in `AllocateRawUnaligned` we have the `MSAN_ALLOCATED_UNINITIALIZED_MEMORY` macro:
-```c++
+```cpp
   MSAN_ALLOCATED_UNINITIALIZED_MEMORY(object->address(), size_in_bytes);
 ```
 `MSAN_ALLOCATED_UNINITIALIZED_MEMORY` can be found in `src/msan.h` and `ms` stands for `Memory Sanitizer` and 
 would only be used if `V8_US_MEMORY_SANITIZER` is defined.
 The returned `object` will be used to construct an `AllocationResult` when returned.
 Back in `AllocateRaw` we have:
-```c++
+```cpp
 if (allocation.To(&object)) {
     ...
     OnAllocationEvent(object, size_in_bytes);
@@ -1355,7 +1355,7 @@ if (allocation.To(&object)) {
   return allocation;
 ```
 This will return us in `AllocateRawWithLightRetry`:
-```c++
+```cpp
 AllocationResult alloc = AllocateRaw(size, space, alignment);
 if (alloc.To(&result)) {
   DCHECK(result != exception());
@@ -1363,19 +1363,19 @@ if (alloc.To(&result)) {
 }
 ```
 This will return us back in `AllocateRawWithRetryOrFail`:
-```c++
+```cpp
   HeapObject* result = AllocateRawWithLigthRetry(size, space, alignment);
   if (result) return result;
 ```
 And that return will return to `NewMap` in `src/heap/factory.cc`:
-```c++
+```cpp
   result->set_map_after_allocation(*meta_map(), SKIP_WRITE_BARRIER);
   return handle(InitializeMap(Map::cast(result), type, instance_size,
                               elements_kind, inobject_properties),
                 isolate());
 ```
 `InitializeMap`:
-```c++
+```cpp
   map->set_instance_type(type);
   map->set_prototype(*null_value(), SKIP_WRITE_BARRIER);
   map->set_constructor_or_backpointer(*null_value(), SKIP_WRITE_BARRIER);
@@ -1411,19 +1411,19 @@ And that return will return to `NewMap` in `src/heap/factory.cc`:
 ```
 
 Creating a new map ([map_test.cc](./test/map_test.cc):
-```c++
+```cpp
   i::Handle<i::Map> map = i::Map::Create(asInternal(isolate_), 10);
   std::cout << map->instance_type() << '\n';
 ```
 `Map::Create` can be found in objects.cc:
-```c++
+```cpp
 Handle<Map> Map::Create(Isolate* isolate, int inobject_properties) {
   Handle<Map> copy = Copy(handle(isolate->object_function()->initial_map()), "MapCreate");
 ```
 So, the first thing that will happen is `isolate->object_function()` will be called. This is function
 that is generated by the preprocessor.
 
-```c++
+```cpp
 // from src/context.h
 #define NATIVE_CONTEXT_FIELDS(V)                                               \
   ...                                                                          \
@@ -1440,26 +1440,26 @@ that is generated by the preprocessor.
 NATIVE_CONTEXT_FIELDS(NATIVE_CONTEXT_FIELD_ACCESSOR)
 ```
 `object_function()` will become:
-```c++
+```cpp
   Handle<JSFunction> Isolate::object_function() {
     return Handle<JSFunction>(raw_native_context()->object_function(), this);
   }
 ```
 
 Lets look closer at `JSFunction::initial_map()` in in object-inl.h:
-```c++
+```cpp
 Map* JSFunction::initial_map() {
   return Map::cast(prototype_or_initial_map());
 }
 ```
 
 `prototype_or_initial_map` is generated by a macro:
-```c++
+```cpp
 ACCESSORS_CHECKED(JSFunction, prototype_or_initial_map, Object,
                   kPrototypeOrInitialMapOffset, map()->has_prototype_slot())
 ```
 `ACCESSORS_CHECKED` can be found in `src/objects/object-macros.h`:
-```c++
+```cpp
 #define ACCESSORS_CHECKED(holder, name, type, offset, condition) \
   ACCESSORS_CHECKED2(holder, name, type, offset, condition, condition)
 
@@ -1483,7 +1483,7 @@ ACCESSORS_CHECKED(JSFunction, prototype_or_initial_map, Object,
   (*reinterpret_cast<Object* const*>(FIELD_ADDR(p, offset)))
 ```
 The preprocessor will expand `prototype_or_initial_map` to:
-```c++
+```cpp
   JSFunction* JSFunction::prototype_or_initial_map() const {
     JSFunction* value = JSFunction::cast(
         (*reinterpret_cast<Object* const*>(
@@ -1493,20 +1493,20 @@ The preprocessor will expand `prototype_or_initial_map` to:
   }
 ```
 Notice that `map()->has_prototype_slot())` will be called first which looks like this:
-```c++
+```cpp
 Map* HeapObject::map() const {
   return map_word().ToMap();
 }
 ```
 __TODO: Add notes about MapWord__  
-```c++
+```cpp
 MapWord HeapObject::map_word() const {
   return MapWord(
       reinterpret_cast<uintptr_t>(RELAXED_READ_FIELD(this, kMapOffset)));
 }
 ```
 First thing that will happen is `RELAXED_READ_FIELD(this, kMapOffset)`
-```c++
+```cpp
 #define RELAXED_READ_FIELD(p, offset)           \
   reinterpret_cast<Object*>(base::Relaxed_Load( \
       reinterpret_cast<const base::AtomicWord*>(FIELD_ADDR(p, offset))))
@@ -1515,13 +1515,13 @@ First thing that will happen is `RELAXED_READ_FIELD(this, kMapOffset)`
   (reinterpret_cast<Address>(p) + offset - kHeapObjectTag)
 ```
 This will get expanded by the preprocessor to:
-```c++
+```cpp
   reinterpret_cast<Object*>(base::Relaxed_Load(
       reinterpret_cast<const base::AtomicWord*>(
           (reinterpret_cast<Address>(this) + kMapOffset - kHeapObjectTag)))
 ```
 `src/base/atomicops_internals_portable.h`:
-```c++
+```cpp
 inline Atomic8 Relaxed_Load(volatile const Atomic8* ptr) {
   return __atomic_load_n(ptr, __ATOMIC_RELAXED);
 }
@@ -1530,7 +1530,7 @@ So this will do an atomoic load of the ptr with the memory order of __ATOMIC_REL
 
 
 `ACCESSORS_CHECKED` also generates a `set_prototyp_or_initial_map`:
-```c++
+```cpp
   void JSFunction::set_prototype_or_initial_map(JSFunction* value, WriteBarrierMode mode) {
     DCHECK(map()->has_prototype_slot());
     WRITE_FIELD(this, kPrototypeOrInitialMapOffset, value);
@@ -1538,14 +1538,14 @@ So this will do an atomoic load of the ptr with the memory order of __ATOMIC_REL
   }
 ```
 What does `WRITE_FIELD` do?  
-```c++
+```cpp
 #define WRITE_FIELD(p, offset, value)                             \
   base::Relaxed_Store(                                            \
       reinterpret_cast<base::AtomicWord*>(FIELD_ADDR(p, offset)), \
       reinterpret_cast<base::AtomicWord>(value));
 ```
 Which would expand into:
-```c++
+```cpp
   base::Relaxed_Store(                                            \
       reinterpret_cast<base::AtomicWord*>(
           (reinterpret_cast<Address>(this) + kPrototypeOrInitialMapOffset - kHeapObjectTag)
@@ -1553,7 +1553,7 @@ Which would expand into:
 ```
 
 Lets take a look at what `instance_type` does:
-```c++
+```cpp
 InstanceType Map::instance_type() const {
   return static_cast<InstanceType>(READ_UINT16_FIELD(this, kInstanceTypeOffset));
 }
@@ -1574,7 +1574,7 @@ Take `map->has_non_instance_prototype()`:
 (lldb) expr -i 0 -- map->has_non_instance_prototype()
 ```
 The above command will break in `src/objects/map-inl.h`:
-```c++
+```cpp
 BIT_FIELD_ACCESSORS(Map, bit_field, has_non_instance_prototype, Map::HasNonInstancePrototypeBit)
 
 // src/objects/object-macros.h
@@ -1587,7 +1587,7 @@ BIT_FIELD_ACCESSORS(Map, bit_field, has_non_instance_prototype, Map::HasNonInsta
   }
 ```
 The preprocessor will expand that to:
-```c++
+```cpp
   typename Map::HasNonInstancePrototypeBit::FieldType Map::has_non_instance_prototype() const {
     return Map::HasNonInstancePrototypeBit::decode(bit_field());
   }                                                             \
@@ -1597,7 +1597,7 @@ The preprocessor will expand that to:
 ```
 So where can we find `Map::HasNonInstancePrototypeBit`?  
 It is generated by a macro in `src/objects/map.h`:
-```c++
+```cpp
 // Bit positions for |bit_field|.
 #define MAP_BIT_FIELD_FIELDS(V, _)          \
   V(HasNonInstancePrototypeBit, bool, 1, _) \
@@ -1618,7 +1618,7 @@ It is generated by a macro in `src/objects/map.h`:
   k##Name##Start, k##Name##End = k##Name##Start + Size - 1,
 ```
 Alright, lets see what preprocessor expands that to:
-```c++
+```cpp
   struct MAP_BIT_FIELD_FIELDS_Ranges {
     enum { 
       kHasNonInstancePrototypeBitStart, 
@@ -1632,19 +1632,19 @@ Alright, lets see what preprocessor expands that to:
 So this would create a struct with an enum and it could be accessed using:
 `i::Map::MAP_BIT_FIELD_FIELDS_Ranges::kHasNonInstancePrototypeBitStart`
 The next part of the macro is
-```c++
+```cpp
   LIST_MACRO(DEFINE_BIT_FIELD_TYPE, LIST_MACRO##_Ranges)
 
 #define DEFINE_BIT_FIELD_TYPE(Name, Type, Size, RangesName) \
   typedef BitField<Type, RangesName::k##Name##Start, Size> Name;
 ```
 Which will get expanded to:
-```c++
+```cpp
   typedef BitField<HasNonInstancePrototypeBit, MAP_BIT_FIELD_FIELDS_Ranges::kHasNonInstancePrototypeBitStart, 1> HasNonInstancePrototypeBit;
 ```
 So this is how `HasNonInstancePrototypeBit` is declared and notice that it is of type `BitField` which can be
 found in `src/utils.h`:
-```c++
+```cpp
 template<class T, int shift, int size>
 class BitField : public BitFieldBase<T, shift, size, uint32_t> { };
 
@@ -1656,7 +1656,7 @@ class BitFieldBase {
 
 Map::HasNonInstancePrototypeBit::decode(bit_field());
 first bit_field is called:
-```c++
+```cpp
 byte Map::bit_field() const { return READ_BYTE_FIELD(this, kBitFieldOffset); }
 
 ```
@@ -1667,11 +1667,11 @@ And the result of that is passed to `Map::HasNonInstancePrototypeBit::decode`:
 (lldb) expr -i 0 --  map->bit_field()
 ```
 
-```c++
+```cpp
 byte Map::bit_field() const { return READ_BYTE_FIELD(this, kBitFieldOffset); }
 ```
 So, `this` is the current Map instance, and we are going to read from.
-```c++
+```cpp
 #define READ_BYTE_FIELD(p, offset) \
   (*reinterpret_cast<const byte*>(FIELD_ADDR(p, offset)))
 
@@ -1679,7 +1679,7 @@ So, `this` is the current Map instance, and we are going to read from.
   (reinterpret_cast<Address>(p) + offset - kHeapObjectTag)
 ```
 Which will get expanded to:
-```c++
+```cpp
 byte Map::bit_field() const { 
   return *reinterpret_cast<const byte*>(
       reinterpret_cast<Address>(this) + kBitFieldOffset - kHeapObjectTag)
@@ -1696,7 +1696,7 @@ The instance_size is the instance_size_in_words << kPointerSizeLog2 (3 on my mac
 (int) $3 = 24
 ```
 `i::HeapObject::kHeaderSize` is 8 on my system  which is used in the `DEFINE_FIELD_OFFSET_CONSTANTS:
-```c++
+```cpp
 #define MAP_FIELDS(V)
 V(kInstanceSizeInWordsOffset, kUInt8Size)
 V(kInObjectPropertiesStartOrConstructorFunctionIndexOffset, kUInt8Size)
@@ -1816,7 +1816,7 @@ the code.
 
 So, lets take a look at adding a property to a JSObject. We start by creating a new Map and then 
 use it to create a new JSObject:
-```c++
+```cpp
   i::Handle<i::Map> map = factory->NewMap(i::JS_OBJECT_TYPE, 32);
   i::Handle<i::JSObject> js_object = factory->NewJSObjectFromMap(map);
 
@@ -1826,7 +1826,7 @@ use it to create a new JSObject:
 ```
 Lets take a closer look at `AddProperty` and how it interacts with the Map. This function can be
 found in `src/objects.cc`:
-```c++
+```cpp
 void JSObject::AddProperty(Handle<JSObject> object, Handle<Name> name,
                            Handle<Object> value,
                            PropertyAttributes attributes) {
@@ -1835,12 +1835,12 @@ void JSObject::AddProperty(Handle<JSObject> object, Handle<Name> name,
 ```
 First we have the LookupIterator constructor (`src/lookup.h`) but since this is a new property which 
 we know does not exist it will not find any property.
-```c++
+```cpp
 CHECK(AddDataProperty(&it, value, attributes, kThrowOnError,
                         CERTAINLY_NOT_STORE_FROM_KEYED)
             .IsJust());
 ```
-```c++
+```cpp
   Handle<JSReceiver> receiver = it->GetStoreTarget<JSReceiver>();
   ...
   it->UpdateProtector();
@@ -1854,18 +1854,18 @@ CHECK(AddDataProperty(&it, value, attributes, kThrowOnError,
   it->WriteDataValue(value, true);
 ```
 `PrepareTransitionToDataProperty`:
-```c++
+```cpp
   Representation representation = value->OptimalRepresentation();
   Handle<FieldType> type = value->OptimalType(isolate, representation);
   maybe_map = Map::CopyWithField(map, name, type, attributes, constness,
   representation, flag);
 ```
 `Map::CopyWithField`:
-```c++
+```cpp
   Descriptor d = Descriptor::DataField(name, index, attributes, constness, representation, wrapped_type);
 ```
 Lets take a closer look the Decriptor which can be found in `src/property.cc`:
-```c++
+```cpp
 Descriptor Descriptor::DataField(Handle<Name> key, int field_index,
                                  PropertyAttributes attributes,
                                  PropertyConstness constness,
@@ -1890,18 +1890,18 @@ are returned when calling `map->instance_descriptors()`. Let check some of the a
 (v8::internal::Representation) $29 = (kind_ = '\b')
 ```
 The Descriptor class contains three members:
-```c++
+```cpp
  private:
   Handle<Name> key_;
   MaybeObjectHandle value_;
   PropertyDetails details_;
 ```
 Lets take a closer look `PropertyDetails` which only has a single member named `value_`
-```c++
+```cpp
   uint32_t value_;
 ```
 It also declares a number of classes the extend BitField, for example:
-```c++
+```cpp
 class KindField : public BitField<PropertyKind, 0, 1> {};
 class LocationField : public BitField<PropertyLocation, KindField::kNext, 1> {};
 class ConstnessField : public BitField<PropertyConstness, LocationField::kNext, 1> {};
@@ -1951,16 +1951,16 @@ class BitField : public BitFieldBase<T, shift, size, uint32_t> { };
 The Type T of KindField will be `PropertyKind`, the `shift` will be 0 , and the `size` 1.
 Notice that `LocationField` is using `KindField::kNext` as its shift. This is a static class constant
 of type `uint32_t` and is defined as:
-```c++
+```cpp
 static const U kNext = kShift + kSize;
 ```
 So `LocationField` would get the value from KindField which should be:
-```c++
+```cpp
 class LocationField : public BitField<PropertyLocation, 1, 1> {};
 ```
 
 The constructor for PropertyDetails looks like this:
-```c++
+```cpp
 PropertyDetails(PropertyKind kind, PropertyAttributes attributes, PropertyCellType cell_type, int dictionary_index = 0) {
     value_ = KindField::encode(kind) | LocationField::encode(kField) |
              AttributesField::encode(attributes) |
@@ -1976,19 +1976,19 @@ So what does KindField::encode(kind) actualy do then?
 (uint32_t) $37 = 0
 ```
 This value is later returned by calling `kind()`:
-```c++
+```cpp
 PropertyKind kind() const { return KindField::decode(value_); }
 ```
 So we have all this information about this property, its type (Representation), constness, if it is 
 read-only, enumerable, deletable, sealed, frozen. After that little detour we are back in `Descriptor::DataField`:
-```c++
+```cpp
   return Descriptor(key, wrapped_field_type, details);
 ```
 Here we are using the key (name of the property), the wrapped_field_type, and PropertyDetails we created.
 What is `wrapped_field_type` again?  
 If we back up a few frames back into `Map::TransitionToDataProperty` we can see that the type passed in
 is taken from the following code:
-```c++
+```cpp
   Representation representation = value->OptimalRepresentation();
   Handle<FieldType> type = value->OptimalType(isolate, representation);
 ```
@@ -1999,11 +1999,11 @@ So this is only taking the type of the field:
 ```
 This makes sense as the map only deals with the shape of the propery and not the value.
 Next in `Map::CopyWithField` we have:
-```c++
+```cpp
   Handle<Map> new_map = Map::CopyAddDescriptor(map, &d, flag);
 ```
 `CopyAddDescriptor` does:
-```c++
+```cpp
   Handle<DescriptorArray> descriptors(map->instance_descriptors());
  
   int nof = map->NumberOfOwnDescriptors();
@@ -2028,20 +2028,20 @@ Layout descriptor: <all tagged>
 TODO: Take a closer look at LayoutDescritpor
 
 Later when actually adding the value in `Object::AddDataProperty`:
-```c++
+```cpp
   it->WriteDataValue(value, true);
 ```
 This call will end up in `src/lookup.cc` and in our case the path will be the following call:
-```c++
+```cpp
   JSObject::cast(*holder)->WriteToField(descriptor_number(), property_details_, *value);
 ```
 TODO: Take a closer look at LookupIterator.
 `WriteToField` can be found in `src/objects-inl.h`:
-```c++
+```cpp
   FieldIndex index = FieldIndex::ForDescriptor(map(), descriptor);
 ```
 `FieldIndex::ForDescriptor` can be found in `src/field-index-inl.h`:
-```c++
+```cpp
 inline FieldIndex FieldIndex::ForDescriptor(const Map* map, int descriptor_index) {
   PropertyDetails details = map->instance_descriptors()->GetDetails(descriptor_index);
   int field_index = details.field_index();
@@ -2069,7 +2069,7 @@ lldb) expr map->instance_descriptors()->Print()
 In our case we are accessing the PropertyDetails and then getting the `field_index` which I think tells us
 where in the object the value for this property is stored.
 The last call in `ForDescriptor` is `ForProperty:
-```c++
+```cpp
 inline FieldIndex FieldIndex::ForPropertyIndex(const Map* map,
                                                int property_index,
                                                Representation representation) {
@@ -2101,11 +2101,11 @@ the properties array. All get back to an example of this later to clarify this.
 TODO: Add in-object properties example.
 
 Back in `JSObject::WriteToField`:
-```c++
+```cpp
   RawFastPropertyAtPut(index, value);
 ```
 
-```c++
+```cpp
 void JSObject::RawFastPropertyAtPut(FieldIndex index, Object* value) {
   if (index.is_inobject()) {
     int offset = index.offset();
@@ -2127,7 +2127,7 @@ So, `property_array()->set()` will be called.
 (v8::internal::JSObject *) $21 = 0x00002c31c6a88b59
 ```
 JSObject inherits from JSReceiver which is where the property_array() function is declared.
-```c++
+```cpp
   inline PropertyArray* property_array() const;
 ```
 ```console
@@ -2176,7 +2176,7 @@ Lets take a look at when a map is created.
 (lldb) br s -f map_test.cc -l 63
 ```
 
-```c++
+```cpp
 Handle<Map> Factory::NewMap(InstanceType type,
                             int instance_size,
                             ElementsKind elements_kind,
@@ -2190,7 +2190,7 @@ Handle<Map> Factory::NewMap(InstanceType type,
 ```
 We can see that the above is calling `AllocateRawWithRetryOrFail` on the heap instance passing a size of `88` and
 specifying the `MAP_SPACE`:
-```c++
+```cpp
 HeapObject* Heap::AllocateRawWithRetryOrFail(int size, AllocationSpace space,
                                              AllocationAlignment alignment) {
   AllocationResult alloc;
@@ -2216,12 +2216,12 @@ The default value for `alignment` is `kWordAligned`. Reading the docs in the hea
 will try to perform an allocation of size `88` in the `MAP_SPACE` and if it fails a full GC will be performed
 and the allocation retried.
 Lets take a look at `AllocateRawWithLigthRetry`:
-```c++
+```cpp
   AllocationResult alloc = AllocateRaw(size, space, alignment);
 ```
 `AllocateRaw` can be found in `src/heap/heap-inl.h`. There are different paths that will be taken depending on the
 `space` parameteter. Since it is `MAP_SPACE` in our case we will focus on that path:
-```c++
+```cpp
 AllocationResult Heap::AllocateRaw(int size_in_bytes, AllocationSpace space, AllocationAlignment alignment) {
   ...
   HeapObject* object = nullptr;
@@ -2235,11 +2235,11 @@ AllocationResult Heap::AllocateRaw(int size_in_bytes, AllocationSpace space, All
 }
 ```
 `map_space_` is a private member of Heap (src/heap/heap.h):
-```c++
+```cpp
 MapSpace* map_space_;
 ```
 `AllocateRawUnaligned` can be found in `src/heap/spaces-inl.h`:
-```c++
+```cpp
 AllocationResult PagedSpace::AllocateRawUnaligned( int size_in_bytes, UpdateSkipList update_skip_list) {
   if (!EnsureLinearAllocationArea(size_in_bytes)) {
     return AllocationResult::Retry(identity());
@@ -2252,7 +2252,7 @@ AllocationResult PagedSpace::AllocateRawUnaligned( int size_in_bytes, UpdateSkip
 ```
 The default value for `update_skip_list` is `UPDATE_SKIP_LIST`.
 So lets take a look at `AllocateLinearly`:
-```c++
+```cpp
 HeapObject* PagedSpace::AllocateLinearly(int size_in_bytes) {
   Address current_top = allocation_info_.top();
   Address new_top = current_top + size_in_bytes;
@@ -2278,14 +2278,14 @@ to read/write to memory locations. The indexes are mostly in the form of enum fi
 of the type.
 
 Next, in `AllocateRawUnaligned` we have the `MSAN_ALLOCATED_UNINITIALIZED_MEMORY` macro:
-```c++
+```cpp
   MSAN_ALLOCATED_UNINITIALIZED_MEMORY(object->address(), size_in_bytes);
 ```
 `MSAN_ALLOCATED_UNINITIALIZED_MEMORY` can be found in `src/msan.h` and `ms` stands for `Memory Sanitizer` and 
 would only be used if `V8_US_MEMORY_SANITIZER` is defined.
 The returned `object` will be used to construct an `AllocationResult` when returned.
 Back in `AllocateRaw` we have:
-```c++
+```cpp
 if (allocation.To(&object)) {
     ...
     OnAllocationEvent(object, size_in_bytes);
@@ -2294,7 +2294,7 @@ if (allocation.To(&object)) {
   return allocation;
 ```
 This will return us in `AllocateRawWithLightRetry`:
-```c++
+```cpp
 AllocationResult alloc = AllocateRaw(size, space, alignment);
 if (alloc.To(&result)) {
   DCHECK(result != exception());
@@ -2302,19 +2302,19 @@ if (alloc.To(&result)) {
 }
 ```
 This will return us back in `AllocateRawWithRetryOrFail`:
-```c++
+```cpp
   HeapObject* result = AllocateRawWithLigthRetry(size, space, alignment);
   if (result) return result;
 ```
 And that return will return to `NewMap` in `src/heap/factory.cc`:
-```c++
+```cpp
   result->set_map_after_allocation(*meta_map(), SKIP_WRITE_BARRIER);
   return handle(InitializeMap(Map::cast(result), type, instance_size,
                               elements_kind, inobject_properties),
                 isolate());
 ```
 `InitializeMap`:
-```c++
+```cpp
   map->set_instance_type(type);
   map->set_prototype(*null_value(), SKIP_WRITE_BARRIER);
   map->set_constructor_or_backpointer(*null_value(), SKIP_WRITE_BARRIER);
@@ -2395,7 +2395,7 @@ attribute has a hidden visibility. There is such a flag in build/common.gypi
 
 ### ToLocalChecked()
 You'll see a few of these calls in the hello_world example:
-```c++
+```cpp
   Local<String> source = String::NewFromUtf8(isolate, js, NewStringType::kNormal).ToLocalChecked();
 ```
 
@@ -3200,7 +3200,7 @@ implementation in `src/api/api.cc`.
 
 The well known Symbols are generated using macros so you won't find the just
 by searching using the static function names like 'GetToPrimitive`.
-```c++
+```cpp
 #define WELL_KNOWN_SYMBOLS(V)                 \
   V(AsyncIterator, async_iterator)            \
   V(HasInstance, has_instance)                \
@@ -3221,7 +3221,7 @@ by searching using the static function names like 'GetToPrimitive`.
   }
 ```
 So GetToPrimitive would become:
-```c++
+```cpp
 Local<Symbol> v8::Symbol::GeToPrimitive(Isolate* isolate) {
   i::Isolate* i_isolate = reinterpret_cast<i::Isolate*>(isolate);
   return Utils::ToLocal(i_isolate->factory()->to_primitive_symbol());
@@ -3507,7 +3507,7 @@ Is a macro to defining Turbofan (TF) builtins and can be found in `builtins/buil
 
 If we take a look at the file src/builtins/builtins-bigint-gen.cc and the following
 function:
-```c++
+```cpp
 TF_BUILTIN(BigIntToI64, CodeStubAssembler) {                                       
   if (!Is64()) {                                                                   
     Unreachable();                                                                 
@@ -3530,7 +3530,7 @@ processing this macro:
 ```console
 $ clang++ --sysroot=build/linux/debian_sid_amd64-sysroot -isystem=./buildtools/third_party/libc++/trunk/include -isystem=buildtools/third_party/libc++/trunk/include -I. -E src/builtins/builtins-bigint-gen.cc > builtins-bigint-gen.cc.pp
 ```
-```c++
+```cpp
 static void Generate_BigIntToI64(compiler::CodeAssemblerState* state);
 
 class BigIntToI64Assembler : public CodeStubAssembler { 
@@ -3746,7 +3746,7 @@ ninja: Entering directory `out/x64.release_gcc/'
 
 Alright, so I'd like to understand when in the process torque is run to
 generate classes like TorqueGeneratedStruct:
-```c++
+```cpp
 class Struct : public TorqueGeneratedStruct<Struct, HeapObject> {
 ```
 ```
@@ -4339,7 +4339,7 @@ A little further down in src/api.h there is another macro which looks like this:
     OPEN_HANDLE_LIST(MAKE_OPEN_HANDLE)
 
 MAKE_OPEN_HANDLE:
-```c++
+```cpp
     #define MAKE_OPEN_HANDLE(From, To)
       v8::internal::Handle<v8::internal::To> Utils::OpenHandle( 
       const v8::From* that, bool allow_empty_handle) {         
@@ -4350,7 +4350,7 @@ MAKE_OPEN_HANDLE:
 And remember that JSFunction is included in the `OPEN_HANDLE_LIST` so there will
 be the following in the source after the preprocessor has processed this header:
 A concrete example would look like this:
-```c++
+```cpp
 v8::internal::Handle<v8::internal::JSFunction> Utils::OpenHandle(
     const v8::Script* that, bool allow_empty_handle) {
   return v8::internal::Handle<v8::internal::JSFunction>(
@@ -4448,7 +4448,7 @@ Handle<Context> context = Context::New(isolate_,
                                        v8::Local<v8::ObjectTemplate>());
 ```
 `Context::New` can be found in `src/api.cc:6405`:
-```c++
+```cpp
 Local<Context> v8::Context::New(
     v8::Isolate* external_isolate, v8::ExtensionConfiguration* extensions,
     v8::MaybeLocal<ObjectTemplate> global_template,
@@ -4459,7 +4459,7 @@ Local<Context> v8::Context::New(
 }
 ```
 The declaration of this function can be found in `include/v8.h`:
-```c++
+```cpp
 static Local<Context> New(
       Isolate* isolate, ExtensionConfiguration* extensions = NULL,
       MaybeLocal<ObjectTemplate> global_template = MaybeLocal<ObjectTemplate>(),
@@ -4476,7 +4476,7 @@ If specified these will be installed by `Boostrapper::InstallExtensions` which w
 `Genesis::InstallExtensions`, both can be found in `src/boostrapper.cc`.
 Where are extensions registered?   
 This is done once per process and called from `V8::Initialize()`:
-```c++
+```cpp
 void Bootstrapper::InitializeOncePerProcess() {
   free_buffer_extension_ = new FreeBufferExtension;
   v8::RegisterExtension(free_buffer_extension_);
@@ -4507,14 +4507,14 @@ Creating a new Context is done by `v8::CreateEnvironment`
 ```console
 (lldb) br s -f api.cc -l 6565
 ```
-```c++
+```cpp
 InvokeBootstrapper<ObjectType> invoke;
    6635    result =
 -> 6636        invoke.Invoke(isolate, maybe_proxy, proxy_template, extensions,
    6637                      context_snapshot_index, embedder_fields_deserializer);
 ```
 This will later end up in `Snapshot::NewContextFromSnapshot`:
-```c++
+```cpp
 Vector<const byte> context_data =
       ExtractContextData(blob, static_cast<uint32_t>(context_index));
   SnapshotData snapshot_data(context_data);
@@ -4600,7 +4600,7 @@ name = EmptyFunction
 So this is the JSFunction associated with the deserialized context. Not sure what this is about as looking at the source code it looks like
 an empty function. A function can also be set on the context so I'm guessing that this give access to the function of a context once set.
 Where is function set, well it is probably deserialized but we can see it be used in `deps/v8/src/bootstrapper.cc`:
-```c++
+```cpp
 {
   Handle<JSFunction> function = SimpleCreateFunction(isolate, factory->empty_string(), Builtins::kAsyncFunctionAwaitCaught, 2, false);
   native_context->set_async_function_await_caught(*function);
@@ -4610,7 +4610,7 @@ Where is function set, well it is probably deserialized but we can see it be use
 ```
 
 `Context::Scope` is a RAII class used to Enter/Exit a context. Lets take a closer look at `Enter`:
-```c++
+```cpp
 void Context::Enter() {
   i::Handle<i::Context> env = Utils::OpenHandle(this);
   i::Isolate* isolate = env->GetIsolate();
@@ -4623,14 +4623,14 @@ void Context::Enter() {
 ```
 So the current context is saved and then the this context `env` is set as the current on the isolate.
 `EnterContext` will push the passed-in context (deps/v8/src/api.cc):
-```c++
+```cpp
 void HandleScopeImplementer::EnterContext(Handle<Context> context) {
   entered_contexts_.push_back(*context);
 }
 ...
 DetachableVector<Context*> entered_contexts_;
 ```
-```c++
+```cpp
 DetachableVector is a delegate/adaptor with some additonaly features on a std::vector.
 Handle<Context> context1 = NewContext(isolate);
 Handle<Context> context2 = NewContext(isolate);
@@ -4643,7 +4643,7 @@ We can look at this as we entered context_scope2 from context_scope1:
 
 
 And `Exit` looks like:
-```c++
+```cpp
 void Context::Exit() {
   i::Handle<i::Context> env = Utils::OpenHandle(this);
   i::Isolate* isolate = env->GetIsolate();
@@ -4663,21 +4663,21 @@ void Context::Exit() {
 #### EmbedderData
 A context can have embedder data set on it. Like decsribed above a Context is
 internally A FixedArray. `SetEmbedderData` in Context is implemented in `src/api.cc`:
-```c++
+```cpp
 const char* location = "v8::Context::SetEmbedderData()";
 i::Handle<i::FixedArray> data = EmbedderDataFor(this, index, true, location);
 i::Handle<i::FixedArray> data(env->embedder_data());
 ```
 `location` is only used for logging and we can ignore it for now.
 `EmbedderDataFor`:
-```c++
+```cpp
 i::Handle<i::Context> env = Utils::OpenHandle(context);
 ...
 i::Handle<i::FixedArray> data(env->embedder_data());
 ```
 We can find `embedder_data` in `src/contexts-inl.h`
 
-```c++
+```cpp
 #define NATIVE_CONTEXT_FIELD_ACCESSORS(index, type, name) \
   inline void set_##name(type* value);                    \
   inline bool is_##name(type* value) const;               \
@@ -4685,7 +4685,7 @@ We can find `embedder_data` in `src/contexts-inl.h`
   NATIVE_CONTEXT_FIELDS(NATIVE_CONTEXT_FIELD_ACCESSORS)
 ```
 And `NATIVE_CONTEXT_FIELDS` in context.h:
-```c++
+```cpp
 #define NATIVE_CONTEXT_FIELDS(V)                                               \
   V(GLOBAL_PROXY_INDEX, JSObject, global_proxy_object)                         \
   V(EMBEDDER_DATA_INDEX, FixedArray, embedder_data)                            \
@@ -4708,7 +4708,7 @@ NATIVE_CONTEXT_FIELDS(NATIVE_CONTEXT_FIELD_ACCESSORS)
 #undef NATIVE_CONTEXT_FIELD_ACCESSORS
 ```
 So the preprocessor would expand this to:
-```c++
+```cpp
 FixedArray embedder_data() const;
 
 void Context::set_embedder_data(FixedArray value) {
@@ -4752,14 +4752,14 @@ This was taken while debugging [ContextTest::EmbedderData](./test/context_test.c
 
 ### ENTER_V8_FOR_NEW_CONTEXT
 This macro is used in `CreateEnvironment` (src/api.cc) and the call in this function looks like this:
-```c++
+```cpp
 ENTER_V8_FOR_NEW_CONTEXT(isolate);
 ```
 
 
 ### Factory::NewMap
 This section will take a look at the following call:
-```c++
+```cpp
 i::Handle<i::Map> map = factory->NewMap(i::JS_OBJECT_TYPE, 24);
 ```
 
@@ -4777,13 +4777,13 @@ Handle<Map> Factory::NewMap(InstanceType type, int instance_size,
 
 ```
 If we take a look at factory.h we can see the default values for elements_kind and inobject_properties:
-```c++
+```cpp
 Handle<Map> NewMap(InstanceType type, int instance_size,
                      ElementsKind elements_kind = TERMINAL_FAST_ELEMENTS_KIND,
                      int inobject_properties = 0);
 ```
 If we expand the CALL_HEAP_FUNCTION macro we will get:
-```c++
+```cpp
     AllocationResult __allocation__ = isolate()->heap()->AllocateMap(type,
                                                                      instance_size,
                                                                      elements_kind,
@@ -4814,12 +4814,12 @@ If we expand the CALL_HEAP_FUNCTION macro we will get:
     return Handle<Map>();
 ```
 So, lets take a look at `isolate()->heap()->AllocateMap` in 'src/heap/heap.cc':
-```c++
+```cpp
   HeapObject* result = nullptr;
   AllocationResult allocation = AllocateRaw(Map::kSize, MAP_SPACE);
 ```
 `AllocateRaw` can be found in src/heap/heap-inl.h:
-```c++
+```cpp
   bool large_object = size_in_bytes > kMaxRegularHeapObjectSize;
   HeapObject* object = nullptr;
   AllocationResult allocation;
@@ -4848,7 +4848,7 @@ So, lets take a look at `isolate()->heap()->AllocateMap` in 'src/heap/heap.cc':
 (v8::internal::MapSpace *) $6 = 0x0000000104700f60
 ```
 `AllocateRawUnaligned` can be found in `src/heap/spaces-inl.h`
-```c++
+```cpp
   HeapObject* object = AllocateLinearly(size_in_bytes);
 ```
 
@@ -4886,13 +4886,13 @@ pointer itself is used to store the information.
 
 
 In our case the calling v8::Isolate::New which is done by the test fixture: 
-```c++
+```cpp
 virtual void SetUp() {
   isolate_ = v8::Isolate::New(create_params_);
 }
 ```
 This will call: 
-```c++
+```cpp
 Isolate* Isolate::New(const Isolate::CreateParams& params) {
   Isolate* isolate = Allocate();
   Initialize(isolate, params);
@@ -4900,12 +4900,12 @@ Isolate* Isolate::New(const Isolate::CreateParams& params) {
 }
 ```
 In `Isolate::Initialize` we'll call `i::Snapshot::Initialize(i_isolate)`:
-```c++
+```cpp
 if (params.entry_hook || !i::Snapshot::Initialize(i_isolate)) {
   ...
 ```
 Which will call:
-```c++
+```cpp
 bool success = isolate->Init(&deserializer);
 ```
 Before this call all the roots are uninitialized. Reading this [blog](https://v8project.blogspot.com/) it says that
@@ -4919,14 +4919,14 @@ is what they meant.
     frame #2: 0x000000010157c682 libv8.dylib`v8::internal::Snapshot::Initialize(isolate=0x000000010481cc00) at snapshot-common.cc:54
 ```
 In `startup-deserializer.cc` we can find `StartupDeserializer::DeserializeInto`:
-```c++
+```cpp
   DisallowHeapAllocation no_gc;
   isolate->heap()->IterateSmiRoots(this);
   isolate->heap()->IterateStrongRoots(this, VISIT_ONLY_STRONG);
 ```
 After 
 If we take a look in `src/roots.h` we can find the read-only roots in Heap. If we take the 10 value, which is:
-```c++
+```cpp
 V(String, empty_string, empty_string)                                        \
 ```
 we can then inspect this value:
@@ -4941,7 +4941,7 @@ we can then inspect this value:
 So this entry is a pointer to objects on the managed heap which have been deserialized from the snapshot.
 
 The heap class has a lot of members that are initialized during construction by the body of the constructor looks like this:
-```c++
+```cpp
 {
   // Ensure old_generation_size_ is a multiple of kPageSize.
   DCHECK_EQ(0, max_old_generation_size_ & (Page::kPageSize - 1));
@@ -4963,7 +4963,7 @@ We can see that roots_ is filled with 0 values. We can inspect `roots_` using:
 ```
 Now they are all 0 at this stage, so when will this array get populated?  
 These will happen in `Isolate::Init`:
-```c++
+```cpp
   heap_.SetUp()
   if (!create_heap_objects) des->DeserializeInto(this);
 
@@ -4975,7 +4975,7 @@ isolate->heap()->IterateSmiRoots(this);
 ```
 
 This will delegate to `ConfigureHeapDefaults()` which will call Heap::ConfigureHeap:
-```c++
+```cpp
 enum RootListIndex {
   kFreeSpaceMapRootIndex,
   kOnePointerFillerMapRootIndex,
@@ -5001,7 +5001,7 @@ in to the .TEXT section which is readonly and therefore can be shared amoung mul
 builtins are compiled and stored in the snapshot but now it seems that the are instead placed in to `out.gn/learning/gen/embedded.cc` and the combined with the object files from the compile to produce the libv8.dylib.
 V8 has a configuration option named `v8_enable_embedded_builtins` which which case `embedded.cc` will be added 
 to the list of sources. This is done in `BUILD.gn` and the `v8_snapshot` target. If `v8_enable_embedded_builtins` is false then `src/snapshot/embedded-empty.cc` will be included instead. Both of these files have the following functions:
-```c++
+```cpp
 const uint8_t* DefaultEmbeddedBlob()
 uint32_t DefaultEmbeddedBlobSize()
 
@@ -5011,12 +5011,12 @@ uint32_t TrustedEmbeddedBlobSize()
 #endif
 ```
 These functions are used by `isolate.cc` and declared `extern`:
-```c++
+```cpp
 extern const uint8_t* DefaultEmbeddedBlob();
 extern uint32_t DefaultEmbeddedBlobSize();
 ```
 And the usage of `DefaultEmbeddedBlob` can be see in Isolate::Isolate where is sets the embedded blob:
-```c++
+```cpp
 SetEmbeddedBlob(DefaultEmbeddedBlob(), DefaultEmbeddedBlobSize());
 ```
 Lets set a break point there and see if this is empty of not.
@@ -5027,13 +5027,13 @@ Lets set a break point there and see if this is empty of not.
 So we can see that we are not using the empty one. Isolate::SetEmbeddedBlob
 
 We can see in `src/snapshot/deserializer.cc` (line 552) we have a check for the embedded_blob():
-```c++
+```cpp
   CHECK_NOT_NULL(isolate->embedded_blob());
   EmbeddedData d = EmbeddedData::FromBlob();
   Address address = d.InstructionStartOfBuiltin(builtin_index);
 ```
 `EmbeddedData can be found in `src/snapshot/snapshot.h` and the implementation can be found in snapshot-common.cc.
-```c++
+```cpp
 Address EmbeddedData::InstructionStartOfBuiltin(int i) const {
   const struct Metadata* metadata = Metadata();
   const uint8_t* result = RawData() + metadata[i].instructions_offset;
@@ -5044,7 +5044,7 @@ Address EmbeddedData::InstructionStartOfBuiltin(int i) const {
 (lldb) expr *metadata
 (const v8::internal::EmbeddedData::Metadata) $7 = (instructions_offset = 0, instructions_length = 1464)
 ```
-```c++
+```cpp
   struct Metadata {
     // Blob layout information.
     uint32_t instructions_offset;
@@ -5074,7 +5074,7 @@ So what we have is a pointer to the .text segment which is returned:
 0x101b14ee8: 0xec 0x28 0x48 0x89 0x55
 ```
 And we can compare this with `out.gn/learning/gen/embedded.cc`:
-```c++
+```cpp
 V8_EMBEDDED_TEXT_HEADER(v8_Default_embedded_blob_)
 __asm__(
   ...
@@ -5083,7 +5083,7 @@ __asm__(
 );
 ```
 The macro `V8_EMBEDDED_TEXT_HEADER` can be found `src/snapshot/macros.h`:
-```c++
+```cpp
 #define V8_EMBEDDED_TEXT_HEADER(LABEL)         \
   __asm__(V8_ASM_DECLARE(#LABEL)               \
           ".csect " #LABEL "[DS]\n"            \
@@ -5097,7 +5097,7 @@ define V8_ASM_DECLARE(NAME) ".private_extern " V8_ASM_MANGLE_LABEL NAME "\n"
 #define V8_ASM_TEXT_SECTION ".csect .text[PR]\n"
 ```
 And would be expanded by the preprocessor into:
-```c++
+```cpp
   __asm__(".private_extern " _ v8_Default_embedded_blob_ "\n"
           ".csect " v8_Default_embedded_blob_ "[DS]\n"
           v8_Default_embedded_blob_ ":\n"
@@ -5113,7 +5113,7 @@ And would be expanded by the preprocessor into:
 ```
 
 Back in `src/snapshot/deserialzer.cc` we are on this line:
-```c++
+```cpp
   Address address = d.InstructionStartOfBuiltin(builtin_index);
   CHECK_NE(kNullAddress, address);
   if (RelocInfo::OffHeapTargetIsCodedSpecially()) {
@@ -5547,7 +5547,7 @@ persistent-obj.cc:57:38:   required from here
 Currently, we have added a pragma to avoid this warning in node.js but we'd like
 to add this in v8 and closer to the actual code that is causing it. In node we
 have to set the praga on the header.
-```c++
+```cpp
 template <class T>
 template <typename P>
 V8_INLINE void PersistentBase<T>::SetWeak(
@@ -5561,25 +5561,25 @@ V8_INLINE void PersistentBase<T>::SetWeak(
 ```
 Notice the second parameter is `typename WeakCallbackInfo<P>::Callback` which is
 a typedef:
-```c++
+```cpp
   typedef void (*Callback)(const WeakCallbackInfo<T>& data);
 ```
 This is a function declaration for `Callback` which is a function that takes
 a reference to a const WeakCallbackInfo<T> and returns void. So we could define
 it like this:
-```c++
+```cpp
 void WeakCallback(const v8::WeakCallbackInfo<Something>& data) {
   Something* obj = data.GetParameter();
   std::cout << "in make weak callback..." << '\n';
 }
 ```
 And the trying to cast it into:
-```c++
+```cpp
   typedef typename v8::WeakCallbackInfo<void>::Callback Callback;
   Callback cb = reinterpret_cast<Callback>(WeakCallback);
 ```
 This is done as V8::MakeWeak has the following signature:
-```c++
+```cpp
 void V8::MakeWeak(i::Address* location, void* parameter,
                   WeakCallbackInfo<void>::Callback weak_callback,
                   WeakCallbackType type) {
@@ -5698,7 +5698,7 @@ Notice that this directory contains c++ headers and sources.
 
 It take [torque-example.tq](./torque-example.tq) as input. For this file the
 following header will be generated:
-```c++
+```cpp
 #ifndef V8_GEN_TORQUE_GENERATED_TORQUE_EXAMPLE_TQ_H_                            
 #define V8_GEN_TORQUE_GENERATED_TORQUE_EXAMPLE_TQ_H_                            
                                                                                 
@@ -5751,7 +5751,7 @@ This has been updated to work with the latest V8 version.
 
 Next, we need to update `src/init/bootstrappers.cc` to add/install this function
 on the math object:
-```c++
+```cpp
   SimpleInstallFunction(isolate_, math, "is42", Builtins::kMathIs42, 1, true);
 ```
 After this we need to rebuild v8:
@@ -5773,7 +5773,7 @@ run it through the preprocessor using):
 $ clang++ --sysroot=build/linux/debian_sid_amd64-sysroot -isystem=./buildtools/third_party/libc++/trunk/include -isystem=buildtools/third_party/libc++/trunk/include -I. -E out/x64.release_gcc/gen/torque-generated/src/builtins/math-tq-csa.cc > math.cc.pp
 ```
 If we open math.cc.pp and search for `Is42` we can find:
-```c++
+```cpp
 class MathIs42Assembler : public CodeStubAssembler {                            
  public:                                                                        
   using Descriptor = Builtin_MathIs42_InterfaceDescriptor;                      
@@ -5801,14 +5801,14 @@ above is CodeStubAssemble class.
 
 If we take a look in out/x64.release_gcc/gen/torque-generated/builtin-definitions-tq.h
 we can find the following line that has been generated:
-```c++
+```cpp
 TFJ(MathIs42, 1, kReceiver, kX) \                                               
 ```
 Now, there is a section about the [TF_BUILTIN](#tf_builtin) macro, and it will
 create function declarations, and function and class definitions:
 
 Now, in src/builtins/builtins.h we have the following macros:
-```c++
+```cpp
 class Builtins {
  public:
 
@@ -5828,7 +5828,7 @@ class Builtins {
 ```
 And `BUILTINS_LIST` is declared in src/builtins/builtins-definitions.h and this
 file includes:
-```c++
+```cpp
 #include "torque-generated/builtin-definitions-tq.h"
 
 #define BUILTIN_LIST(CPP, TFJ, TFC, TFS, TFH, BCH, ASM)  \                          
@@ -5846,7 +5846,7 @@ we can see what has been generated for MathIs42:
 $ clang++ --sysroot=build/linux/debian_sid_amd64-sysroot -isystem=./buildtools/third_party/libc++/trunk/include -isystem=buildtools/third_party/libc++/trunk/include -I. -I./out/x64.release_gcc/gen/ -E src/builtins/builtins.h > builtins.h.pp
 ```
 First MathIs42 will be come a member in the Name enum of the Builtins class:
-```c++
+```cpp
 class Builtins {
  public:
 
@@ -5860,7 +5860,7 @@ class Builtins {
 We should also take a look in `src/builtins/builtins-descriptors.h` as the BUILTIN_LIST
 is used there two and specifically to our current example there is a
 `DEFINE_TFJ_INTERFACE_DESCRIPTOR` macro used:
-```c++
+```cpp
 BUILTIN_LIST(IGNORE_BUILTIN, DEFINE_TFJ_INTERFACE_DESCRIPTOR,
              DEFINE_TFC_INTERFACE_DESCRIPTOR, DEFINE_TFS_INTERFACE_DESCRIPTOR,
              DEFINE_TFH_INTERFACE_DESCRIPTOR, IGNORE_BUILTIN,
@@ -5883,7 +5883,7 @@ So the above will generate the following code but this time for builtins.cc:
 $ clang++ --sysroot=build/linux/debian_sid_amd64-sysroot -isystem=./buildtools/third_party/libc++/trunk/include -isystem=buildtools/third_party/libc++/trunk/include -I. -I./out/x64.release_gcc/gen/ -E src/builtins/builtins.cc > builtins.cc.pp
 ```
 
-```c++
+```cpp
 struct Builtin_MathIs42_InterfaceDescriptor { 
   enum ParameterIndices { 
     kJSTarget = compiler::CodeAssembler::kTargetParameterIndex,
@@ -5907,7 +5907,7 @@ and the last 0 is unused as far as I can tell and only there make it different
 from the constructor that takes an Address parameter.
 
 So, where is `Generate_MathIs42` used:
-```c++
+```cpp
 void SetupIsolateDelegate::SetupBuiltinsInternal(Isolate* isolate) {
   Code code;
   ...
@@ -5916,7 +5916,7 @@ void SetupIsolateDelegate::SetupBuiltinsInternal(Isolate* isolate) {
   ...
 ```
 `BuildWithCodeStubAssemblerJS` can be found in `src/builtins/setup-builtins-internal.cc`
-```c++
+```cpp
 Code BuildWithCodeStubAssemblerJS(Isolate* isolate, int32_t builtin_index,
                                   CodeAssemblerGenerator generator, int argc,
                                   const char* name) {
@@ -5946,7 +5946,7 @@ $8 = (v8::internal::(anonymous namespace)::CodeAssemblerGenerator) 0x5619fd61b66
 ```
 TODO: Take a closer look at generate and how that code works. 
 After generate returns we will have the following call:
-```c++
+```cpp
   generator(&state);                                                               
   Handle<Code> code = compiler::CodeAssembler::GenerateCode(                       
       &state, BuiltinAssemblerOptions(isolate, builtin_index));                    
@@ -5954,19 +5954,19 @@ After generate returns we will have the following call:
 ```
 Then next thing that will happen is the code returned will be added to the builtins
 by calling `SetupIsolateDelegate::AddBuiltin`:
-```c++
+```cpp
 void SetupIsolateDelegate::AddBuiltin(Builtins* builtins, int index, Code code) {
   builtins->set_builtin(index, code);                                           
 } 
 ```
 `set_builtins` can be found in src/builtins/builtins.cc` and looks like this:
-```c++
+```cpp
 void Builtins::set_builtin(int index, Code builtin) {                           
   isolate_->heap()->set_builtin(index, builtin);                                
 }
 ```
 And Heap::set_builtin does:
-```c++
+```cpp
  void Heap::set_builtin(int index, Code builtin) {
   isolate()->builtins_table()[index] = builtin.ptr();
 }
@@ -5991,15 +5991,15 @@ Alright, so we have seen what gets generated for the function MathIs42 but how
 does this get "hooked" but to enable us to call `Math.is42(11)`?  
 
 In bootstrapper.cc we can see a number of lines:
-```c++
+```cpp
  SimpleInstallFunction(isolate_, math, "trunc", Builtins::kMathTrunc, 1, true); 
 ```
 And we are going to add a line like the following:
-```c++
+```cpp
  SimpleInstallFunction(isolate_, math, "is42", Builtins::kMathIs42, 1, true);
 ```
 The signature for `SimpleInstallFunction` looks like this
-```c++
+```cpp
 V8_NOINLINE Handle<JSFunction> SimpleInstallFunction(
     Isolate* isolate, Handle<JSObject> base, const char* name,
     Builtins::Name call, int len, bool adapt,
@@ -6201,7 +6201,7 @@ $ ninja -C out/wee8 wee8
 
 ### V8 Internal Isolate
 `src/execution/isolate.h` is where you can find the v8::internal::Isolate.
-```c++
+```cpp
 class V8_EXPORT_PRIVATE Isolate final : private HiddenFactory {
 
 ```
@@ -6237,14 +6237,14 @@ Next, we have:
 This will land in `src/libplatform/default-platform.cc` which will create a new
 DefaultPlatform.
 
-```c++
+```cpp
 Isolate* isolate = Isolate::New(create_params);
 ```
 This will call Allocate: 
-```c++
+```cpp
 Isolate* isolate = Allocate();
 ```
-```c++
+```cpp
 Isolate* Isolate::Allocate() {
   return reinterpret_cast<Isolate*>(i::Isolate::New());
 }
@@ -6252,7 +6252,7 @@ Isolate* Isolate::Allocate() {
 
 Remember that the internal Isolate can be found in `src/execution/isolate.h`.
 In `src/execution/isolate.cc` we find `Isolate::New`
-```c++
+```cpp
 Isolate* Isolate::New(IsolateAllocationMode mode) {
   std::unique_ptr<IsolateAllocator> isolate_allocator = std::make_unique<IsolateAllocator>(mode);
   void* isolate_ptr = isolate_allocator->isolate_memory();
@@ -6264,7 +6264,7 @@ notice the usage of `new` here, this is just a normal heap allocation.
 
 The default new operator has been deleted and an override provided that takes
 a void pointer, which is just returned: 
-```c++
+```cpp
   void* operator new(size_t, void* ptr) { return ptr; }
   void* operator new(size_t) = delete;
   void operator delete(void*) = delete;
@@ -6273,7 +6273,7 @@ In this case it just returns the memory allocateed by isolate-memory().
 The reason for doing this is that using the new operator not only invokes the
 new operator but the compiler will also add a call the types constructor passing
 in the address of the allocated memory.
-```c++
+```cpp
 Isolate::Isolate(std::unique_ptr<i::IsolateAllocator> isolate_allocator)
     : isolate_data_(this),
       isolate_allocator_(std::move(isolate_allocator)),
@@ -6292,14 +6292,14 @@ Isolate::Isolate(std::unique_ptr<i::IsolateAllocator> isolate_allocator)
 ```
 Notice that  `isolate_data_` will be populated by calling the constructor which
 takes an pointer to an Isolate.
-```c++
+```cpp
 class IsolateData final {
  public:
   explicit IsolateData(Isolate* isolate) : stack_guard_(isolate) {}
 ```
 
 Back in Isolate's constructor we have:
-```c++
+```cpp
 #define ISOLATE_INIT_LIST(V)                                                   \
   /* Assembler state. */                                                       \
   V(FatalErrorCallback, exception_behavior, nullptr)                           \
@@ -6311,7 +6311,7 @@ Back in Isolate's constructor we have:
 #undef ISOLATE_INIT_EXECUTE
 ```
 So lets expand the first entry to understand what is going on:
-```c++
+```cpp
    exception_behavior_ = (nullptr);
    oom_behavior_ = (nullptr);
    event_logger_ = (nullptr);
@@ -6359,7 +6359,7 @@ assessor to get and set these initial values values (which is the last entry
 in the ISOLATE_INIT_LIST above.
 
 Back in isolate.cc constructor we have:
-```c++
+```cpp
 #define ISOLATE_INIT_ARRAY_EXECUTE(type, name, length) \
   memset(name##_, 0, sizeof(type) * length);
   ISOLATE_INIT_ARRAY_LIST(ISOLATE_INIT_ARRAY_EXECUTE)
@@ -6373,19 +6373,19 @@ Back in isolate.cc constructor we have:
   MicrotaskQueue::SetUpDefaultMicrotaskQueue(this);
 ```
 After that we have created a new Isolate, we were in this function call:
-```c++
+```cpp
   Isolate* isolate = new (isolate_ptr) Isolate(std::move(isolate_allocator));
 ```
 After this we will be back in `api.cc`:
-```c++
+```cpp
   Initialize(isolate, params);
 ```
-```c++
+```cpp
 void Isolate::Initialize(Isolate* isolate,
                          const v8::Isolate::CreateParams& params) {
 ```
 We are not using any external snapshot data so the following will be false:
-```c++
+```cpp
   if (params.snapshot_blob != nullptr) {
     i_isolate->set_snapshot_blob(params.snapshot_blob);
   } else {
@@ -6401,12 +6401,12 @@ $8 = (const v8::StartupData *) 0x7ff92d7d6cf0 <v8::internal::blob>
 `snapshot_blob_` is also one of the members that was set up with ISOLATE_INIT_LIST.
 So we are setting up the Isolate instance for creation. 
 
-```c++
+```cpp
 Isolate::Scope isolate_scope(isolate);                                        
 if (!i::Snapshot::Initialize(i_isolate)) { 
 ```
 In `src/snapshot/snapshot-common.cc` we find 
-```c++
+```cpp
 bool Snapshot::Initialize(Isolate* isolate) {
   ...
   const v8::StartupData* blob = isolate->snapshot_blob();
@@ -6427,7 +6427,7 @@ have be create previously using `mksnapshot` (more on this can be found later).
 
 This will use a `FOR_EACH_ISOLATE_ADDRESS_NAME` macro to assign to the
 `isolate_addresses_` field:
-```c++
+```cpp
 isolate_addresses_[IsolateAddressId::kHandlerAddress] = reinterpret_cast<Address>(handler_address());
 isolate_addresses_[IsolateAddressId::kCEntryFPAddress] = reinterpret_cast<Address>(c_entry_fp_address());
 isolate_addresses_[IsolateAddressId::kCFunctionAddress] = reinterpret_cast<Address>(c_function_address());
@@ -6442,7 +6442,7 @@ isolate_addresses_[IsolateAddressId::kPendingHandlerContextAddress] = reinterpre
  isolate_addresses_[IsolateAddressId::kJSEntrySPAddress] = reinterpret_cast<Address>(js_entry_sp_address());
 ```
 After this we have a number of members that are assigned to:
-```c++
+```cpp
   compilation_cache_ = new CompilationCache(this);
   descriptor_lookup_cache_ = new DescriptorLookupCache();
   inner_pointer_to_code_cache_ = new InnerPointerToCodeCache(this);
@@ -6462,11 +6462,11 @@ After this we have a number of members that are assigned to:
       new CompilerDispatcher(this, V8::GetCurrentPlatform(), FLAG_stack_size);
 ```
 After this we have:
-```c++
+```cpp
 isolate_data_.external_reference_table()->Init(this);
 ```
 This will land in `src/codegen/external-reference-table.cc` where we have:
-```c++
+```cpp
 void ExternalReferenceTable::Init(Isolate* isolate) {                              
   int index = 0;                                                                   
   Add(kNullAddress, &index);                                                       
@@ -6490,14 +6490,14 @@ Address ref_addr_[kSize];
 ```
 
 Now, lets take a look at `AddReferences`: 
-```c++
+```cpp
 Add(ExternalReference::abort_with_reason().address(), index); 
 ```
 What are ExternalReferences?   
 They represent c++ addresses used in generated code.
 
 After that we have AddBuiltins:
-```c++
+```cpp
 static const Address c_builtins[] = {                                         
       (reinterpret_cast<v8::internal::Address>(&Builtin_HandleApiCall)), 
       ...
@@ -6506,7 +6506,7 @@ Address Builtin_HandleApiCall(int argc, Address* args, Isolate* isolate);
 ```
 I can see that the function declaration is in external-reference.h but the
 implementation is not there. Instead this is defined in `src/builtins/builtins-api.cc`:
-```c++
+```cpp
 BUILTIN(HandleApiCall) {                                                           
 (will expand to:)
 
@@ -6551,13 +6551,13 @@ V8_WARN_UNUSED_RESULT Address Builtin_HandleApiCall(
   }
 ``` 
 The `BUILTIN` macro can be found in `src/builtins/builtins-utils.h`:
-```c++
+```cpp
 #define BUILTIN(name)                                                       \
   V8_WARN_UNUSED_RESULT static Object Builtin_Impl_##name(                  \
       BuiltinArguments args, Isolate* isolate);
 ```
 
-```c++
+```cpp
   if (setup_delegate_ == nullptr) {                                                 
     setup_delegate_ = new SetupIsolateDelegate(create_heap_objects);            
   } 
@@ -6570,11 +6570,11 @@ The `BUILTIN` macro can be found in `src/builtins/builtins-utils.h`:
 This does nothing in the current code path and the code comment says that the
 heap will be deserialized from the snapshot and true will be returned.
 
-```c++
+```cpp
 InitializeThreadLocal();
 startup_deserializer->DeserializeInto(this);
 ```
-```c++
+```cpp
 DisallowHeapAllocation no_gc;                                               
 isolate->heap()->IterateSmiRoots(this);                                     
 isolate->heap()->IterateStrongRoots(this, VISIT_FOR_SERIALIZATION);         
@@ -6591,7 +6591,7 @@ snapshots.
 
 ### Roots
 RootVistor:
-```c++
+```cpp
 class RootVisitor {
  public:
   virtual void VisitRootPointers(Root root, const char* description,
@@ -6606,7 +6606,7 @@ class RootVisitor {
 ```
 Root is an enum in `src/object/visitors.h`. This enum is generated by a macro
 and expands to:
-```c++
+```cpp
 enum class Root {                                                               
   kStringTable,
   kExternalStringsTable,
@@ -6673,7 +6673,7 @@ TODO: Look into CreateOffHeapTrampolines.
 
 So the VisitRootPointers function takes one of these Root's and visits all those
 roots.  In our case the first Root to be visited is Heap::IterateSmiRoots:
-```c++
+```cpp
 void Heap::IterateSmiRoots(RootVisitor* v) {                                        
   ExecutionAccess access(isolate());                                                
   v->VisitRootPointers(Root::kSmiRootList, nullptr,                                 
@@ -6696,7 +6696,7 @@ We can list all the values of roots_table using:
 (lldb) expr -A -- roots_table()
 ```
 In `src/snapshot/deserializer.cc` we can find VisitRootPointers:
-```c++
+```cpp
 void Deserializer::VisitRootPointers(Root root, const char* description,
                                      FullObjectSlot start, FullObjectSlot end)
   ReadData(FullMaybeObjectSlot(start), FullMaybeObjectSlot(end),
@@ -6707,7 +6707,7 @@ Notice that description is never used. `ReadData`is in the same source file:
 The class SnapshotByteSource has a `data` member that is initialized upon construction
 from a const char* or a Vector<const byte>. Where is this done?  
 This was done back in `Snapshot::Initialize`:
-```c++
+```cpp
   const v8::StartupData* blob = isolate->snapshot_blob();                       
   Vector<const byte> startup_data = ExtractStartupData(blob);                   
   Vector<const byte> read_only_data = ExtractReadOnlyData(blob);                
@@ -6723,7 +6723,7 @@ This was done back in `Snapshot::Initialize`:
 All the roots in a heap are declared in src/roots/roots.h. You can access the
 roots using RootsTable via the Isolate using isolate_data->roots() or by using
 isolate->roots_table. The roots_ field is an array of Address elements:
-```c++
+```cpp
 class RootsTable {                                                              
  public:
   static constexpr size_t kEntriesCount = static_cast<size_t>(RootIndex::kRootListLength);
@@ -6733,7 +6733,7 @@ class RootsTable {
   static const char* root_names_[kEntriesCount]; 
 ```
 RootIndex is generated by a macro
-```c++
+```cpp
 enum class RootIndex : uint16_t {
 ```
 The complete enum can be displayed using:
@@ -6774,14 +6774,14 @@ like factory->Error_string():
 ```
 These accessor functions declarations are generated by the
 `ROOT_LIST(ROOT_ACCESSOR))` macros:
-```c++
+```cpp
 #define ROOT_ACCESSOR(Type, name, CamelName) inline Handle<Type> name();           
   ROOT_LIST(ROOT_ACCESSOR)                                                         
 #undef ROOT_ACCESSOR
 ```
 And the definitions can be found in `src/heap/factory-inl.h` and look like this
 The implementations then look like this:
-```c++
+```cpp
 String ReadOnlyRoots::Error_string() const { 
   return  String::unchecked_cast(Object(at(RootIndex::kError_string)));
 } 
@@ -6821,7 +6821,7 @@ is an array of `Address`'s.
     frame #7: 0x00007ffff66af5de libv8.so`v8::internal::ReadOnlyHeap::SetUp(isolate=0x00000f7500000000, des=0x00007fffffffcce0) at read-only-heap.cc:78:53
 ```
 This will land us in `roots.cc` ReadOnlyRoots::Iterate(RootVisitor* visitor):
-```c++
+```cpp
 void ReadOnlyRoots::Iterate(RootVisitor* visitor) {                                
   visitor->VisitRootPointers(Root::kReadOnlyRootList, nullptr,                     
                              FullObjectSlot(read_only_roots_),                     
@@ -6832,7 +6832,7 @@ void ReadOnlyRoots::Iterate(RootVisitor* visitor) {
 Deserializer::VisitRootPointers calls `Deserializer::ReadData` and the roots_
 array is still zero:ed out when we enter this function.
 
-```c++
+```cpp
 void Deserializer::VisitRootPointers(Root root, const char* description,
                                      FullObjectSlot start, FullObjectSlot end) {
   ReadData(FullMaybeObjectSlot(start), FullMaybeObjectSlot(end),
@@ -6841,7 +6841,7 @@ void Deserializer::VisitRootPointers(Root root, const char* description,
 Notice that we called VisitRootPointer and pased in `Root:kReadOnlyRootList`, 
 nullptr (the description), and start and end addresses as FullObjectSlots. The
 signature of `VisitRootPointers` looks like this:
-```c++
+```cpp
 virtual void VisitRootPointers(Root root, const char* description,            
                                  FullObjectSlot start, FullObjectSlot end)
 ```
@@ -6850,7 +6850,7 @@ and the end is found by using the static member of ReadOnlyRoots::kEntrysCount.
 
 The switch statement in `ReadData` is generated by macros so lets take a look at
 an expanded snippet to understand what is going on:
-```c++
+```cpp
 template <typename TSlot>
 bool Deserializer::ReadData(TSlot current, TSlot limit,
                             SnapshotSpace source_space,
@@ -6873,7 +6873,7 @@ And `ReadOnlyDeserializer` extends `Deserialier` (src/snapshot/deserializer.h)
 which has a constructor that sets the source_ member to data->Payload().
 So `source_` is will be pointer to an instance of `SnapshotByteSource` which
 can be found in `src/snapshot-source-sink.h`:
-```c++
+```cpp
 class SnapshotByteSource final {
  public:
   SnapshotByteSource(const char* data, int length)
@@ -6893,7 +6893,7 @@ class SnapshotByteSource final {
 Alright, so we are calling source_.Get() which we can see returns the current
 entry from the byte array data_ and increment the position. So with that in
 mind lets take closer look at the switch statment:
-```c++
+```cpp
   while (current < limit) {                                                     
     byte data = source_.Get();                                                  
     switch (data) {                                                             
@@ -6911,20 +6911,20 @@ mind lets take closer look at the switch statment:
 ```
 We can see that switch statement will assign the passed-in `current` with a new
 instance of `ReadDataCase`.
-```c++
+```cpp
   current = ReadDataCase<TSlot, kNewObject, SnapshotSpace::kNew>(isolate,
       current, current_object_address, data, write_barrier_needed);
 ```
 Notice that kNewObject is the type of SerializerDeserliazer::Bytecode that is
 to be read (I think), this enum can be found in `src/snapshot/serializer-common.h`.
 `TSlot` I think stands for the "Type of Slot", which in our case is a FullMaybyObjectSlot.
-```c++
+```cpp
   HeapObject heap_object;
   if (bytecode == kNewObject) {                                                 
     heap_object = ReadObject(space);   
 ```
 ReadObject is also in deserializer.cc :
-```c++
+```cpp
 Address address = allocator()->Allocate(space, size);
 HeapObject obj = HeapObject::FromAddress(address);
 isolate_->heap()->OnAllocationEvent(obj, size);
@@ -6983,7 +6983,7 @@ Next, we will go through the while loop again:
 (v8::internal::SlotBase<v8::internal::FullMaybeObjectSlot, unsigned long, 8>::TData *) $194 = 0x00000f7500000088
 ```
 Notice that in Deserializer::Write we have:
-```c++
+```cpp
   dest.store(value);
   return dest + 1;
 ```
@@ -7037,7 +7037,7 @@ With this value in the roots_ array we can use the function ReadOnlyRoots::undef
 So how are these roots used, take the above `undefined_value` for example?  
 Well most things (perhaps all) that are needed go via the Factory which the
 internal Isolate is a type of. In factory we can find:
-```c++
+```cpp
 Handle<Oddball> Factory::undefined_value() {
   return Handle<Oddball>(&isolate()->roots_table()[RootIndex::kUndefinedValue]);
 }
@@ -7049,7 +7049,7 @@ The unit test [isolate_test](./test/isolate_test.cc) explores the internal
 isolate and has example of usages of the above mentioned methods.
 
 InitwithSnapshot will call Isolate::Init:
-```c++
+```cpp
 bool Isolate::Init(ReadOnlyDeserializer* read_only_deserializer,
                    StartupDeserializer* startup_deserializer) {
 
@@ -7059,7 +7059,7 @@ bool Isolate::Init(ReadOnlyDeserializer* read_only_deserializer,
   FOR_EACH_ISOLATE_ADDRESS_NAME(ASSIGN_ELEMENT)
 #undef ASSIGN_ELEMENT
 ```
-```c++
+```cpp
   Address isolate_addresses_[kIsolateAddressCount + 1] = {};
 ```
 ```console
@@ -7071,7 +7071,7 @@ Lets take a look at the expanded code in Isolate::Init:
 ```console
 $ clang++ -I./out/x64.release/gen -I. -I./include -E src/execution/isolate.cc > output
 ```
-```c++
+```cpp
 isolate_addresses_[IsolateAddressId::kHandlerAddress] = reinterpret_cast<Address>(handler_address());
 isolate_addresses_[IsolateAddressId::kCEntryFPAddress] = reinterpret_cast<Address>(c_entry_fp_address());
 isolate_addresses_[IsolateAddressId::kCFunctionAddress] = reinterpret_cast<Address>(c_function_address());
@@ -7086,7 +7086,7 @@ isolate_addresses_[IsolateAddressId::kExternalCaughtExceptionAddress] = reinterp
 isolate_addresses_[IsolateAddressId::kJSEntrySPAddress] = reinterpret_cast<Address>(js_entry_sp_address());
 ```
 Then functions, like handler_address() are implemented as:
-```c++ 
+```cpp 
 inline Address* handler_address() { return &thread_local_top()->handler_; }   
 ```
 ```console
@@ -7096,7 +7096,7 @@ inline Address* handler_address() { return &thread_local_top()->handler_; }
 At this point in the program we have only set the entries to point contain
 the addresses specified in ThreadLocalTop, At the time there are initialized
 the will mostly be initialized to `kNullAddress`:
-```c++
+```cpp
 static const Address kNullAddress = 0;
 ```
 And notice that the functions above return pointers so later these pointers can
@@ -7104,7 +7104,7 @@ be updated to point to something. What/when does this happen?  Lets continue and
 find out...
 
 Back in Isolate::Init we have:
-```c++
+```cpp
   compilation_cache_ = new CompilationCache(this);
   descriptor_lookup_cache_ = new DescriptorLookupCache();
   inner_pointer_to_code_cache_ = new InnerPointerToCodeCache(this);
@@ -7133,7 +7133,7 @@ Back in Isolate::Init we have:
 ```
 Lets take a look at `InitializeThreadLocal`
 
-```c++
+```cpp
 void Isolate::InitializeThreadLocal() {
   thread_local_top()->Initialize(this);
   clear_pending_exception();
@@ -7141,14 +7141,14 @@ void Isolate::InitializeThreadLocal() {
   clear_scheduled_exception();
 }
 ```
-```c++
+```cpp
 void Isolate::clear_pending_exception() {
   DCHECK(!thread_local_top()->pending_exception_.IsException(this));
   thread_local_top()->pending_exception_ = ReadOnlyRoots(this).the_hole_value();
 }
 ```
 ReadOnlyRoots 
-```c++
+```cpp
 #define ROOT_ACCESSOR(Type, name, CamelName) \
   V8_INLINE class Type name() const;         \
   V8_INLINE Handle<Type> name##_handle() const;
@@ -7160,14 +7160,14 @@ This will expand to a number of function declarations that looks like this:
 ```console
 $ clang++ -I./out/x64.release/gen -I. -I./include -E src/roots/roots.h > output
 ```
-```c++
+```cpp
 inline __attribute__((always_inline)) class Map free_space_map() const;
 inline __attribute__((always_inline)) Handle<Map> free_space_map_handle() const;
 ```
 The Map class is what all HeapObject use to describe their structure. Notice
 that there is also a Handle<Map> declared.
 These are generated by a macro in roots-inl.h:
-```c++
+```cpp
 Map ReadOnlyRoots::free_space_map() const { 
   ((void) 0);
   return Map::unchecked_cast(Object(at(RootIndex::kFreeSpaceMap)));
@@ -7179,15 +7179,15 @@ Handle<Map> ReadOnlyRoots::free_space_map_handle() const {
 }
 ```
 Notice that this is using the RootIndex enum that was mentioned earlier:
-```c++
+```cpp
   return Map::unchecked_cast(Object(at(RootIndex::kFreeSpaceMap)));
 ```
 In object/map.h there is the following line:
-```c++
+```cpp
   DECL_CAST(Map)
 ```
 Which can be found in objects/object-macros.h:
-```c++
+```cpp
 #define DECL_CAST(Type)                                 \
   V8_INLINE static Type cast(Object object);            \
   V8_INLINE static Type unchecked_cast(Object object) { \
@@ -7195,36 +7195,36 @@ Which can be found in objects/object-macros.h:
   }
 ```
 This will expand to something like
-```c++
+```cpp
   static Map cast(Object object);
   static Map unchecked_cast(Object object) {
     return bit_cast<Map>(object);
   }
 ```
 And the `Object` part is the Object contructor that takes an Address: 
-```c++
+```cpp
   explicit constexpr Object(Address ptr) : TaggedImpl(ptr) {}
 ```
 That leaves the at function which is a private function in ReadOnlyRoots:
-```c++
+```cpp
   V8_INLINE Address& at(RootIndex root_index) const;
 ```
 
 So we are now back in Isolate::Init after the call to InitializeThreadLocal we
 have:
-```c++
+```cpp
 setup_delegate_->SetupBuiltins(this);
 ```
 
 In the following line in api.cc, where does `i::OBJECT_TEMPLATE_INFO_TYPE` come from:
-```c++
+```cpp
   i::Handle<i::Struct> struct_obj = isolate->factory()->NewStruct(
       i::OBJECT_TEMPLATE_INFO_TYPE, i::AllocationType::kOld);
 ```
 
 ### InstanceType
 The enum `InstanceType` is defined in `src/objects/instance-type.h`:
-```c++
+```cpp
 #include "torque-generated/instance-types-tq.h" 
 
 enum InstanceType : uint16_t {
@@ -7236,27 +7236,27 @@ enum InstanceType : uint16_t {
 };
 ```
 And in `gen/torque-generated/instance-types-tq.h` we can find:
-```c++
+```cpp
 #define TORQUE_ASSIGNED_INSTANCE_TYPES(V) \                                     
   ...
   V(OBJECT_TEMPLATE_INFO_TYPE, 79) \                                      
   ...
 ```
 There is list in `src/objects/objects-definitions.h`:
-```c++
+```cpp
 #define STRUCT_LIST_GENERATOR_BASE(V, _)                                      \
   ...
   V(_, OBJECT_TEMPLATE_INFO_TYPE, ObjectTemplateInfo, object_template_info)   \
   ...
 ```
-```c++
+```cpp
 template <typename Impl>
 Handle<Struct> FactoryBase<Impl>::NewStruct(InstanceType type,
                                             AllocationType allocation) {
   Map map = Map::GetInstanceTypeMap(read_only_roots(), type);
 ```
 If we look in `Map::GetInstanceTypeMap` in map.cc we find:
-```c++
+```cpp
   Map map;
   switch (type) {
 #define MAKE_CASE(TYPE, Name, name) \
@@ -7271,11 +7271,11 @@ Now, we know that our type is:
 (gdb) p type
 $1 = v8::internal::OBJECT_TEMPLATE_INFO_TYPE
 ```
-```c++
+```cpp
     map = roots.object_template_info_map();       \
 ```
 And we can inspect the output of the preprocessor of roots.cc and find:
-```c++
+```cpp
 Map ReadOnlyRoots::object_template_info_map() const { 
   ((void) 0);
   return Map::unchecked_cast(Object(at(RootIndex::kObjectTemplateInfoMap)));
@@ -7285,7 +7285,7 @@ And this is something we have seen before.
 
 One things I ran into was wanting to print the InstanceType using the overloaded
 << operator which is defined for the InstanceType in objects.cc.
-```c++
+```cpp
 std::ostream& operator<<(std::ostream& os, InstanceType instance_type) {
   switch (instance_type) {
 #define WRITE_TYPE(TYPE) \
@@ -7298,13 +7298,13 @@ std::ostream& operator<<(std::ostream& os, InstanceType instance_type) {
 }
 ```
 The code I'm using is the followig:
-```c++
+```cpp
   i::InstanceType type = map.instance_type();
   std::cout << "object_template_info_map type: " << type << '\n';
 ```
 This will cause the `UNREACHABLE()` function to be called and a Fatal error
 thrown. But note that the following line works:
-```c++
+```cpp
   std::cout << "object_template_info_map type: " << v8::internal::OBJECT_TEMPLATE_INFO_TYPE << '\n';
 ```
 And prints
@@ -7312,13 +7312,13 @@ And prints
 object_template_info_map type: OBJECT_TEMPLATE_INFO_TYPE
 ```
 In the switch/case block above the case for this value is:
-```c++
+```cpp
   case OBJECT_TEMPLATE_INFO_TYPE:
     return os << "OBJECT_TEMPLATE_INFO_TYPE"
 ```
 When map.instance_type() is called, it returns a value of `1023` but the value
 of OBJECT_TEMPLATE_INFO_TYPE is:
-```c++
+```cpp
 OBJECT_TEMPLATE_INFO_TYPE = 79
 ```
 And we can confirm this using:
@@ -7334,12 +7334,12 @@ object_template_info_map type: 79
 
 ### Context creation
 When we create a new context using:
-```c++
+```cpp
   Local<ObjectTemplate> global = ObjectTemplate::New(isolate_);
   Local<Context> context = Context::New(isolate_, nullptr, global);
 ```
 The Context class in `include/v8.h` declares New as follows:
-```c++
+```cpp
 static Local<Context> New(Isolate* isolate,
     ExtensionConfiguration* extensions = nullptr,
     MaybeLocal<ObjectTemplate> global_template = MaybeLocal<ObjectTemplate>(),
@@ -7357,7 +7357,7 @@ MaybeLocal<v8::ObjectTemplate> constructor. After those break points the break
 point will be in api.cc and v8::Context::New. New will call NewContext in api.cc.
 
 There will be some checks and logging/tracing and then a call to CreateEnvironment:
-```c++
+```cpp
 i::Handle<i::Context> env = CreateEnvironment<i::Context>(                         
     isolate,
     extensions,
@@ -7368,17 +7368,17 @@ i::Handle<i::Context> env = CreateEnvironment<i::Context>(
     microtask_queue); 
 ```
 The first line in CreateEnironment is:
-```c++
+```cpp
 ENTER_V8_FOR_NEW_CONTEXT(isolate);
 ```
 Which is a macro defined in api.cc
-```c++
+```cpp
 i::VMState<v8::OTHER> __state__((isolate)); \                                 
 i::DisallowExceptions __no_exceptions__((isolate)) 
 ```
 So the first break point we break on will be the execution/vm-state-inl.h and
 VMState's constructor:
-```c++
+```cpp
 template <StateTag Tag>                                                         
 VMState<Tag>::VMState(Isolate* isolate)                                         
     : isolate_(isolate), previous_tag_(isolate->current_vm_state()) {           
@@ -7403,13 +7403,13 @@ The next break point will be:
 107	  explicit PerIsolateAssertScopeDebugOnly(Isolate* isolate)
 ```
 We can find that `DisallowExceptions` is defined in src/common/assert-scope.h as:
-```c++
+```cpp
 using DisallowExceptions =                                                      
     PerIsolateAssertScopeDebugOnly<NO_EXCEPTION_ASSERT, false>;
 ```
 After all that we can start to look at the code in CreateEnvironment.
 
-```c++
+```cpp
     // Create the environment.                                                       
     InvokeBootstrapper<ObjectType> invoke;                                           
     result = invoke.Invoke(isolate, maybe_proxy, proxy_template, extensions,    
@@ -7450,28 +7450,28 @@ Handle<Context> env;
 ```
 Notice that the break point will be in the HandleScope constructor. Then a 
 new instance of Genesis is created which performs some actions in its constructor.
-```c++
+```cpp
 global_proxy = isolate->factory()->NewUninitializedJSGlobalProxy(instance_size);
 ```
 
 This will land in factory.cc:
-```c++
+```cpp
 Handle<Map> map = NewMap(JS_GLOBAL_PROXY_TYPE, size);
 ```
 `size` will be 16 in this case. `NewMap` is declared in factory.h which has
 default values for its parameters:
-```c++
+```cpp
   Handle<Map> NewMap(InstanceType type, int instance_size,                      
                      ElementsKind elements_kind = TERMINAL_FAST_ELEMENTS_KIND,  
                      int inobject_properties = 0);
 ```
 
 In Factory::InitializeMap we have the following check:
-```c++
+```cpp
 DCHECK_EQ(map.GetInObjectProperties(), inobject_properties);
 ```
 Remember that I called `Context::New` with the following arguments:
-```c++
+```cpp
   Local<ObjectTemplate> global = ObjectTemplate::New(isolate_);
   Local<Context> context = Context::New(isolate_, nullptr, global);
 ```
@@ -7483,22 +7483,22 @@ Remember that I called `Context::New` with the following arguments:
 
 ### TaggedImpl
 Has a single private member which is declared as:
-```c++
+```cpp
 StorageType ptr_;
 ```
 An instance can be created using:
-```c++
+```cpp
   i::TaggedImpl<i::HeapObjectReferenceType::STRONG, i::Address>  tagged{};
 ```
 Storage type can also be `Tagged_t` which is defined in globals.h:
-```c++
+```cpp
  using Tagged_t = uint32_t;
 ```
 It looks like it can be a different value when using pointer compression.
 
 ### Object (internal)
 This class extends TaggedImpl:
-```c++
+```cpp
 class Object : public TaggedImpl<HeapObjectReferenceType::STRONG, Address> {       
 ```
 An Object can be created using the default constructor, or by passing in an 
@@ -7533,12 +7533,12 @@ difference is that Handles can be relocated by the garbage collector.
 
 ### NewContext
 When we create a new context using:
-```c++
+```cpp
 const v8::Local<v8::ObjectTemplate> obt = v8::Local<v8::ObjectTemplate>();
 v8::Handle<v8::Context> context = v8::Context::New(isolate_, nullptr, obt);
 ```
 The above is using the static function New declared in `include/v8.h`
-```c++
+```cpp
 static Local<Context> New(                                                    
     Isolate* isolate,
     ExtensionConfiguration* extensions = nullptr,           
@@ -7561,7 +7561,7 @@ TODO
 
 Currently, the torque generator will generate Print functions that look like
 the following:
-```c++
+```cpp
 template <>                                                                     
 void TorqueGeneratedEnumCache<EnumCache, Struct>::EnumCachePrint(std::ostream& os) {
   this->PrintHeader(os, "TorqueGeneratedEnumCache");
@@ -7576,7 +7576,7 @@ would just be a char instead `'\n'`.
 There are a number of things that need to happen only once upon startup for
 each process. These things are placed in `V8::InitializeOncePerProcessImpl` which
 can be found in `src/init/v8.cc`. This is called by v8::V8::Initialize().
-```c++
+```cpp
   CpuFeatures::Probe(false);                                                    
   ElementsAccessor::InitializeOncePerProcess();                                 
   Bootstrapper::InitializeOncePerProcess();                                     
@@ -7587,7 +7587,7 @@ ElementsAccessor populates the accessor_array with Elements listed in
 `ELEMENTS_LIST`. TODO: take a closer look at Elements. 
 
 v8::Isolate::Initialize will set up the heap.
-```c++
+```cpp
 i_isolate->heap()->ConfigureHeap(params.constraints);
 ```
 
@@ -7697,11 +7697,11 @@ We can use a wasm module like this:
 Where is the WebAssembly object setup?  We have sen previously that objects and
 function are added in `src/init/bootstrapper.cc` and for Wasm there is a function
 named Genisis::InstallSpecialObjects which calls:
-```c++
+```cpp
   WasmJs::Install(isolate, true);
 ```
 This call will land in `src/wasm/wasm-js.cc` where we can find:
-```c++
+```cpp
 void WasmJs::Install(Isolate* isolate, bool exposed_on_global_object) {
   ...
   Handle<String> name = v8_str(isolate, "WebAssembly")
@@ -7734,14 +7734,14 @@ Now, lets also set a break point in WebAssemblyModule:
 (lldb) br s -n WebAssemblyModule
 (lldb) r
 ```
-```c++
+```cpp
   v8::Isolate* isolate = args.GetIsolate();                                         
   i::Isolate* i_isolate = reinterpret_cast<i::Isolate*>(isolate);                   
   if (i_isolate->wasm_module_callback()(args)) return;                              
 ```
 Notice the `wasm_module_callback()` function which is a function that is setup
 on the internal Isolate in `src/execution/isolate.h`:
-```c++
+```cpp
 #define ISOLATE_INIT_LIST(V)                                                   \
   ...
   V(ExtensionCallback, wasm_module_callback, &NoExtension)                     \
@@ -7763,7 +7763,7 @@ on the internal Isolate in `src/execution/isolate.h`:
 #undef GLOBAL_ACCESSOR
 ```
 So this would be expanded by the preprocessor into:
-```c++
+```cpp
 inline ExtensionCallback wasm_module_callback() const {
   ((void) 0);
   return wasm_module_callback_;
@@ -7776,7 +7776,7 @@ inline void set_wasm_module_callback(ExtensionCallback value) {
 Also notice that if `wasm_module_callback()` return true the `WebAssemblyModule`
 fuction will return and no further processing of the instructions in that function
 will be done. `NoExtension` is a function that looks like this:
-```c++
+```cpp
 bool NoExtension(const v8::FunctionCallbackInfo<v8::Value>&) { return false; }
 ```
 And is set as the default function for module/instance callbacks.
@@ -7784,18 +7784,18 @@ And is set as the default function for module/instance callbacks.
 Looking a little further we can see checks for WASM Threads support (TODO: take
 a look at this).
 And then we have:
-```c++
+```cpp
   module_obj = i_isolate->wasm_engine()->SyncCompile(                             
         i_isolate, enabled_features, &thrower, bytes);
 ```
 `SyncCompile` can be found in `src/wasm/wasm-engine.cc` and will call
 `DecodeWasmModule` which can be found in `src/wasm/module-decoder.cc`.
-```c++
+```cpp
 ModuleResult result = DecodeWasmModule(enabled, bytes.start(), bytes.end(),
                                        false, kWasmOrigin, 
                                        isolate->counters(), allocator()); 
 ```
-```c++
+```cpp
 ModuleResult DecodeWasmModule(const WasmFeatures& enabled,                      
                               const byte* module_start, const byte* module_end, 
                               bool verify_functions, ModuleOrigin origin,       
@@ -7806,11 +7806,11 @@ ModuleResult DecodeWasmModule(const WasmFeatures& enabled,
   return decoder.DecodeModule(counters, allocator, verify_functions);
 ```
 DecodeModuleHeader:
-```c++
+```cpp
   uint32_t magic_word = consume_u32("wasm magic");
 ```
 This will land in `src/wasm/decoder.h` consume_little_endian(name):
-```c++
+```cpp
 
 ```
 A wasm module has the following preamble:
@@ -7819,7 +7819,7 @@ magic nr: 0x6d736100
 version: 0x1
 ```
 These can be found as a constant in `src/wasm/wasm-constants.h`:
-```c++
+```cpp
 constexpr uint32_t kWasmMagic = 0x6d736100; 
 constexpr uint32_t kWasmVersion = 0x01;
 ```
@@ -7827,7 +7827,7 @@ After the DecodeModuleHeader the code will iterate of the sections (type,
 import, function, table, memory, global, export, start, element, code, data,
 custom).
 For each section `DecodeSection` will be called:
-```c++
+```cpp
 DecodeSection(section_iter.section_code(), section_iter.payload(),
               offset, verify_functions);
 ```
@@ -7844,7 +7844,7 @@ called.
 
 ValueType can be found in `src/wasm/value-type.h` and there are types for
 each of the currently supported types:
-```c++
+```cpp
 constexpr ValueType kWasmI32 = ValueType(ValueType::kI32);                      
 constexpr ValueType kWasmI64 = ValueType(ValueType::kI64);                      
 constexpr ValueType kWasmF32 = ValueType(ValueType::kF32);                      
@@ -7859,11 +7859,11 @@ constexpr ValueType kWasmBottom = ValueType(ValueType::kBottom);
 ```
 
 `FunctionSig` is declared with a `using` statement in value-type.h:
-```c++
+```cpp
 using FunctionSig = Signature<ValueType>;
 ```
 We can find `Signature` in src/codegen/signature.h:
-```c++
+```cpp
 template <typename T>
 class Signature : public ZoneObject {
  public:
@@ -7884,7 +7884,7 @@ that represents.
 (const v8::internal::wasm::ValueType *) reps = 0x0000555555583948
 ```
 Before the call to `Signature`s construtor we have:
-```c++
+```cpp
     // FunctionSig stores the return types first.                               
     ValueType* buffer = zone->NewArray<ValueType>(param_count + return_count);  
     uint32_t b = 0;                                                             
@@ -7898,7 +7898,7 @@ So `reps_` contains the return (re?) and the params (ps?).
 
 After the DecodeWasmModule has returned in SyncCompile we will have a
 ModuleResult. This will be compiled to NativeModule:
-```c++
+```cpp
 ModuleResult result =                                                         
       DecodeWasmModule(enabled, bytes.start(), bytes.end(), false, kWasmOrigin, 
                        isolate->counters(), allocator());
@@ -7915,7 +7915,7 @@ There is an example in [wasm_test.cc](./test/wasm_test.cc).
 
 ### ExtensionCallback
 Is a typedef defined in `include/v8.h`:
-```c++
+```cpp
 typedef bool (*ExtensionCallback)(const FunctionCallbackInfo<Value>&); 
 ```
 
@@ -7952,7 +7952,7 @@ like `CallNamedSetter` for PropertyCallbackArguments and `Call` for
 FunctionCallbackArguments.
 
 #### FunctionCallbackArguments
-```c++
+```cpp
 class FunctionCallbackArguments                                                 
     : public CustomArguments<FunctionCallbackInfo<Value> > {
   FunctionCallbackArguments(internal::Isolate* isolate, internal::Object data,  
@@ -7966,7 +7966,7 @@ namespace is used here?
 
 #### BuiltinArguments
 This class extends `JavaScriptArguments`
-```c++
+```cpp
 class BuiltinArguments : public JavaScriptArguments {
  public:
   BuiltinArguments(int length, Address* arguments)
@@ -7981,12 +7981,12 @@ class BuiltinArguments : public JavaScriptArguments {
   static constexpr int kNumExtraArgsWithReceiver = 5;
 ```
 `JavaScriptArguments is declared in `src/common/global.h`:
-```c++
+```cpp
 using JavaScriptArguments = Arguments<ArgumentsType::kJS>;
 ```
 `Arguments` can be found in `src/execution/arguments.h`and is templated with 
 the a type of `ArgumentsType` (in `src/common/globals.h`):
-```c++
+```cpp
 enum class ArgumentsType {                                                          
   kRuntime,                                                                         
   kJS,                                                                              
@@ -7999,7 +7999,7 @@ types (like `Handle<S>`, smi, etc). It also overloads the operator[] allowing
 to specify an index and getting back an Object to that argument.
 In `BuiltinArguments` the constants specify the index's and provides functions
 to get them:
-```c++
+```cpp
   inline Handle<Object> receiver() const;                                       
   inline Handle<JSFunction> target() const;                                     
   inline Handle<HeapObject> new_target() const;
@@ -8007,7 +8007,7 @@ to get them:
 
 ### NativeContext
 Can be found in `src/objects/contexts.h` and has the following definition:
-```c++
+```cpp
 class NativeContext : public Context {
  public:
 
@@ -8025,7 +8025,7 @@ class NativeContext : public Context {
 ```
 
 `src/parsing/parser.h` we can find:
-```c++
+```cpp
 class V8_EXPORT_PRIVATE Parser : public NON_EXPORTED_BASE(ParserBase<Parser>) { 
   ...
   enum CompletionKind {                                                             

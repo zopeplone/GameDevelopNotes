@@ -30,7 +30,7 @@ Backtrace：
     at ../deps/v8/src/heap/factory.cc:205
 ```
 让我们看看 `AllocateRawWithLightRetry`：
-```c++
+```cpp
 4882 HeapObject Heap::AllocateRawWithLightRetry(int size, AllocationType allocation, 
 4883                                            AllocationOrigin origin,             
 4884                                            AllocationAlignment alignment) {     
@@ -51,7 +51,7 @@ Backtrace：
 Breakpoint 5 at 0xaaaaab47e700: file ../deps/v8/src/heap/heap.cc, line 4886.
 ```
 这将带我们进入 heap-inl.h：
-```c++
+```cpp
 206   } else if (AllocationType::kCode == type) {                                   
 207     if (size_in_bytes <= code_space()->AreaSize() && !large_object) {           
 208       allocation = code_space_->AllocateRawUnaligned(size_in_bytes);             
@@ -60,13 +60,13 @@ Breakpoint 5 at 0xaaaaab47e700: file ../deps/v8/src/heap/heap.cc, line 4886.
 211     }                                                         
 ```
 在我们的情况下，将执行第 210 行。这将带我们进入 `spaces.cc`：
-```c++
+```cpp
 4386 AllocationResult CodeLargeObjectSpace::AllocateRaw(int object_size) {           
 4387   return LargeObjectSpace::AllocateRaw(object_size, EXECUTABLE);                 
 4388 } 
 ```
 在 `heap-inl.h` 和 `AllocateRaw` 中，函数末尾附近的代码：
-```c++
+```cpp
 227   if (allocation.To(&object)) {                                                 
 228     if (AllocationType::kCode == type) {                                         
 229       // 如果内存块的 MemoryChunk 尚未取消保护，则取消保护。
@@ -86,7 +86,7 @@ Breakpoint 5 at 0xaaaaab47e700: file ../deps/v8/src/heap/heap.cc, line 4886.
 这将调用 `MemoryChunk::FromHeapObject(object)->GetCodeObjectRegistry()->RegisterNewlyAllocatedCodeObject(object.address())`。
 
 MemoryChunk::FromHeapObject 只是一个 reinterpret_cast：
-```c++
+```cpp
 return reinterpret_cast<MemoryChunk*>(object.ptr() & ~kPageAlignmentMask);
 
 const int kPageSizeBits = 18;
@@ -97,7 +97,7 @@ static const intptr_t kPageAlignmentMask = (intptr_t{1} << kPageSizeBits) - 1;
 0x0000aaaaab4d07f4 in std::_Rb_tree<unsigned long, unsigned long, std::_Identity<unsigned long>, std::less<unsigned long>, std::allocator<unsigned long> >::_M_get_insert_unique_pos (__k=<synthetic pointer>: 716832768, this=0x18)
 ```
 我第一次看到这个以及段错误来自 `std::set::insert` 时感到很奇怪，但希望以下示例能说明问题：
-```c++
+```cpp
 #include <stdint.h>
 #include <set>
 #include <iostream>
@@ -126,16 +126,16 @@ auto result = code_object_registry_newly_allocated_.insert(code);
 (gdb) br heap-inl.h:233 if size_in_bytes == 129152
 ```
 第一个断点是 `allocation` 通过调用 `code_lo_space` 上的 `AllocateRaw` 创建的位置（其类型为 `CodeLargeObjectSpace`，可在 `src/heap/spaces.h` 中找到）：
-```c++
+```cpp
 210       allocation = code_lo_space_->AllocateRaw(size_in_bytes);                  
 ```
 `allocation` 之前声明为：
-```c++
+```cpp
   AllocationResult allocation;
 ```
 `AllocationResult` 实例有一个单一成员，类型为 Object。
 有一个函数可以将对象转换为某种类型的指针：
-```c++
+```cpp
 template <typename T>                                                             
 bool To(T* obj) {                                                                 
   if (IsRetry()) return false;                                                
@@ -144,7 +144,7 @@ bool To(T* obj) {
 }
 ```
 此函数在以下 `if` 语句中被调用：
-```c++
+```cpp
   HeapObject object; 
   ...
   if (allocation.To(&object)) {
@@ -164,7 +164,7 @@ $10 = {<v8::internal::TaggedImpl<(v8::internal::HeapObjectReferenceType)1, unsig
 $13 = <optimized out>
 ```
 所以这是将传递给 `HeapObject::cast(object_)` 的对象。此 `To` 函数将返回 true，然后下一行将执行：
-```c++
+```cpp
       UnprotectAndRegisterMemoryChunk(object);
       ZapCodeObject(object.address(), size_in_bytes);
       if (!large_object) {
@@ -176,7 +176,7 @@ $13 = <optimized out>
 我尝试在 [heap_test](https://github.com/danbev/learning-v8/blob/f3aae7a4e073f5a3183199aab89b0a8abe09680f/test/heap_test.cc#L48) 中复现此问题。
 
 看起来 `code_object_registry_` 在这种情况下没有被创建。在 `MemoryChunk::Initialize` 中有以下检查（在 `deps/v8/src/heap/spaces.cc` 中），该函数由我们之前展示的 `CodeLargeObjectSpace::AllocateRaw` 调用：
-```c++
+```cpp
 MemoryChunk* MemoryChunk::Initialize(BasicMemoryChunk* basic_chunk, Heap* heap, 
                                      Executability executable) {   
   ...

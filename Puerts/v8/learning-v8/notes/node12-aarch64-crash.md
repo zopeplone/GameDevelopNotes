@@ -31,7 +31,7 @@ Backtrace:
     at ../deps/v8/src/heap/factory.cc:205
 ```
 Lets take a look at `AllocateRawWithLightRetry`:
-```c++
+```cpp
 4882 HeapObject Heap::AllocateRawWithLightRetry(int size, AllocationType allocation, 
 4883                                            AllocationOrigin origin,             
 4884                                            AllocationAlignment alignment) {     
@@ -52,7 +52,7 @@ Lets set a conditional break point heap.cc:4886:
 Breakpoint 5 at 0xaaaaab47e700: file ../deps/v8/src/heap/heap.cc, line 4886.
 ```
 This will take us into heap-inl.h:
-```c++
+```cpp
 206   } else if (AllocationType::kCode == type) {                                   
 207     if (size_in_bytes <= code_space()->AreaSize() && !large_object) {           
 208       allocation = code_space_->AllocateRawUnaligned(size_in_bytes);            
@@ -61,13 +61,13 @@ This will take us into heap-inl.h:
 211     }                                                         
 ```
 In our case line 210 will be executed. This will take us into `spaces.cc`
-```c++
+```cpp
 4386 AllocationResult CodeLargeObjectSpace::AllocateRaw(int object_size) {           
 4387   return LargeObjectSpace::AllocateRaw(object_size, EXECUTABLE);                
 4388 } 
 ```
 In `heap-inl.h` and `AllocateRaw` following code towards the end of the function:
-```c++
+```cpp
 227   if (allocation.To(&object)) {                                                 
 228     if (AllocationType::kCode == type) {                                        
 229       // Unprotect the memory chunk of the object if it was not unprotected     
@@ -89,7 +89,7 @@ This will call
 MemoryChunk::FromHeapObject(object)->GetCodeObjectRegistry()->RegisterNewlyAllocatedCodeObject(object.address()). 
 
 MemoryChunk::FromHeapObject is only a reinterpret_cast:
-```c++
+```cpp
 return reinterpret_cast<MemoryChunk*>(object.ptr() & ~kPageAlignmentMask);
 
 const int kPageSizeBits = 18;
@@ -101,7 +101,7 @@ And notice `this=0x18` in the backtrace:
 ```
 I found it strange when I first saw this and that the segfault was coming from
 the std::set::insert but hopefully the following example will clarify things:
-```c++
+```cpp
 #include <stdint.h>
 #include <set>
 #include <iostream>
@@ -135,16 +135,16 @@ Lets create a break point so that we can easliy reproduce this:
 The first break point is where the `allocation` is created by calling `AllocateRaw'
 on the `code_lo_space` (which is of type `CodeLargeObjectSpace` which can be
 found in `src/heap/spaces.h`):
-```c++
+```cpp
 210       allocation = code_lo_space_->AllocateRaw(size_in_bytes);                  
 ```
 `allocation is declared earlier as:
-```c++
+```cpp
   AllocationResult allocation;
 ```
 An `AllocationResult` instance has a single member which is of type Object.
 There is a function that can cast an object into a pointer of a type:
-```c++
+```cpp
 template <typename T>                                                             
 bool To(T* obj) {                                                                 
   if (IsRetry()) return false;                                                
@@ -153,7 +153,7 @@ bool To(T* obj) {
 }
 ```
 This function is called in the following `if` statement:
-```c++
+```cpp
   HeapObject object; 
   ...
   if (allocation.To(&object)) {
@@ -174,7 +174,7 @@ $13 = <optimized out>
 ```
 So this is the object that will be passed to HeapObject::cast(object_). This `To`
 function will return true and the the next line that will be executed is
-```c++
+```cpp
       UnprotectAndRegisterMemoryChunk(object);
       ZapCodeObject(object.address(), size_in_bytes);
       if (!large_object) {
@@ -189,7 +189,7 @@ I looks like the `code_object_registry_` is not gettting created in this case.
 In `MemoryChunk::Initialize` there is the following check
 (in deps/v8/src/heap/spaces.cc) which is called by
 CodeLargeObjectSpace::AllocateRaw which we showed earlier:
-```c++
+```cpp
 MemoryChunk* MemoryChunk::Initialize(BasicMemoryChunk* basic_chunk, Heap* heap, 
                                      Executability executable) {   
   ...

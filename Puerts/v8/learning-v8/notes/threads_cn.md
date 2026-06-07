@@ -4,7 +4,7 @@
 但我们可以看到，当 V8 启动时，它会分配线程。
 
 如果我们查看 hello_world 示例，我们可以看到我们创建了一个新的 Platform：
-```c++
+```cpp
   std::unique_ptr<Platform> platform = platform::NewDefaultPlatform();
 ```
 `NewDefaultPlatform` 在 `include/libplatform/libplatform.h` 中声明，并创建一个新的 [DefaultPlatform](#defaultplatform)。
@@ -12,7 +12,7 @@
 ### Platform
 `Platform` 在 `include/v8-platform.h` 中声明。这个抽象类的预期用户是 embedder，他们需要扩展它。但在 `src/libplatform/default-platform.h` 中也有一个默认实现。
 
-```c++
+```cpp
 class Platform {                                                                
  public:
   ...
@@ -28,7 +28,7 @@ class Platform {
 ### DefaultPlatform
 这是 V8 自带的默认 Platform 实现。
 
-```c++
+```cpp
 class V8_PLATFORM_EXPORT DefaultPlatform : public NON_EXPORTED_BASE(Platform) { 
  public:                                                                           
   explicit DefaultPlatform(                                                        
@@ -43,18 +43,18 @@ class V8_PLATFORM_EXPORT DefaultPlatform : public NON_EXPORTED_BASE(Platform) {
 ```
 
 `IdleTaskSupport` 是 `libplatform.h` 中定义的一个枚举：
-```c++
+```cpp
 enum class IdleTaskSupport { kDisabled, kEnabled };
 ```
 我们可以看到，如果未指定，默认为 `kDisabled`。
 我目前最感兴趣的是如何使用线程以及线程的用途，最大线程数是：
-```c++
+```cpp
 constexpr int kMaxThreadPoolSize = 16;
 ```
 如果未显式指定此值，如上所示，默认值为 0，在这种情况下，线程数将为处理器数 -1（或 kMaxThreadPoolSize）。
 
 如果我们查看 DefaultPlatform 的私有成员，我们可以看到它有一个名为 `worker_threads_task_runner_` 的字段，类型为 `DefaultWorkerThreadsTaskRunner`，该类在 `src/libplatform/default-worker-threads-task-runner.h` 中声明：
-```c++
+```cpp
 class V8_PLATFORM_EXPORT DefaultWorkerThreadsTaskRunner                            
     : public NON_EXPORTED_BASE(TaskRunner) {
  public:
@@ -77,7 +77,7 @@ class V8_PLATFORM_EXPORT DefaultWorkerThreadsTaskRunner
 }
 ```
 我们可以在 `src/libplatform/default-worker-threads-task-runner.cc` 中找到具体实现：
-```c++
+```cpp
 DefaultWorkerThreadsTaskRunner::DefaultWorkerThreadsTaskRunner(
     uint32_t thread_pool_size, TimeFunction time_function)
     : queue_(time_function), time_function_(time_function) {
@@ -91,14 +91,14 @@ DefaultWorkerThreadsTaskRunner::DefaultWorkerThreadsTaskRunner(
 
 现在，什么类型的 tasks 会被提交到这个线程池？
 一个例子是编译 wasm 时：
-```c++
+```cpp
   V8::GetCurrentPlatform()->CallOnWorkerThread(std::move(task));
 ```
 此外，还有来自 heap 命名空间的许多调用，涉及 garbage collection。
 
 ### TaskRunner
 在 `include/v8-platform.h` 中声明：
-```c++
+```cpp
 class Task {
  public:
   virtual ~Task() = default;

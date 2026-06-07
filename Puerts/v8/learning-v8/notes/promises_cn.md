@@ -1,7 +1,7 @@
 ### Promises
 Promise 是一个具有状态的对象。例如，我们可以使用以下调用创建 promise：
 
-```c++
+```cpp
   i::Handle<i::JSPromise> promise = factory->NewJSPromise();
   print_handle(promise);
 ```
@@ -20,7 +20,7 @@ Promise 是一个具有状态的对象。例如，我们可以使用以下调用
 `JSPromise` 的实现可以在 `src/objects/js-promise.h` 中找到。
 
 现在，`factory->NewJSPromise` 如下所示：
-```c++
+```cpp
 Handle<JSPromise> Factory::NewJSPromise() {
   Handle<JSPromise> promise = NewJSPromiseWithoutHook();
   isolate()->RunPromiseHook(PromiseHookType::kInit, promise, undefined_value());
@@ -45,7 +45,7 @@ $ gdb ./test/promise_test
 $1 = {<v8::internal::HandleBase> = {location_ = 0x20a7c68}, <No data fields>}
 ```
 这并没有告诉我太多。但如果我们查看 `src/execution/isolate-inl.h`，我们可以找到：
-```c++
+```cpp
 #define NATIVE_CONTEXT_FIELD_ACCESSOR(index, type, name)    \
   Handle<type> Isolate::name() {                            \
     return Handle<type>(raw_native_context().name(), this); \
@@ -57,13 +57,13 @@ NATIVE_CONTEXT_FIELDS(NATIVE_CONTEXT_FIELD_ACCESSOR)
 #undef NATIVE_CONTEXT_FIELD_ACCESSOR
 ```
 而 `NATIVE_CONTEXT_FIELDS` 可以在 `src/objects/contexts.h` 中找到，该文件由 `isolate.h` 包含（而 `isolate-inl.h` 又包含 `isolate.h`）。在 `contexts.h` 中我们发现：
-```c++
+```cpp
 #define NATIVE_CONTEXT_FIELDS(V)
   ...
   V(PROMISE_FUNCTION_INDEX, JSFunction, promise_function)
 ```
 因此，预处理器将为 promise_function 生成以下函数：
-```c++
+```cpp
 inline Handle<JSFunction> promise_function();
 inline bool is_promise_function(JSFunction value);
 
@@ -75,7 +75,7 @@ bool Isolate::is_promise_function(JSFunction value) {
 }
 ```
 以及从上面调用的函数（在 `src/objects/contexts.h` 中）：
-```c++
+```cpp
 inline void set_promise_function(JSFunction value);
 inline bool is_promise_function(JSFunction value) const;
 inline JSFunction promise_function() const;
@@ -96,7 +96,7 @@ JSFunction Context::promise_function() const {
 这就回答了函数的声明和定义位置以及返回内容的问题。
 
 我们可以在 `src/builtins/promise-constructor.tq` 中找到 Torque 源文件，其中有引用 ECMAScript 规范的注释。在我们的例子中，这是 [promise-executor](https://tc39.es/ecma262/#sec-promise-executor)：
-```c++
+```cpp
   transitioning javascript builtin                                                 
   PromiseConstructor(                                                              
       js-implicit context: NativeContext, receiver: JSAny,                         
@@ -119,7 +119,7 @@ JSFunction Context::promise_function() const {
   }
 ```
 以及为此生成的 CodeStubAssembler C++ 源码：
-```c++
+```cpp
 TF_BUILTIN(PromiseConstructor, CodeStubAssembler) {                             
   compiler::CodeAssemblerState* state_ = state();
   compiler::CodeAssembler ca_(state());
@@ -143,7 +143,7 @@ TF_BUILTIN(PromiseConstructor, CodeStubAssembler) {
   }
 ```
 现在，`TF_BUILTIN` 是 `src/builtins/builtins-utils-gen.h` 中的宏：
-```c++
+```cpp
 #define TF_BUILTIN(Name, AssemblerBase)                                 \
   class Name##Assembler : public AssemblerBase {                        \
    public:                                                              \
@@ -169,7 +169,7 @@ TF_BUILTIN(PromiseConstructor, CodeStubAssembler) {
 ```
 
 因此上述内容将被预处理器展开为：
-```c++
+```cpp
 TF_BUILTIN(PromiseConstructor, CodeStubAssembler) {                             
 class PromiseConstructorAssembler : public CodeStubAssembler {
  public:

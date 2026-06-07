@@ -6,7 +6,7 @@ But we can see that when V8 starts it will allocate threads.
 
 If we take a look at the hello_world example we can see that we create a new
 Platform:
-```c++
+```cpp
   std::unique_ptr<Platform> platform = platform::NewDefaultPlatform();
 ```
 `NewDefaultPlatform` is declared in `include/libplatform/libplatform.h` and
@@ -17,7 +17,7 @@ creates a new [DefaultPlatform](#defaultplatform).
 abstract class is embedders which are expected to extends it. But there is
 also  a default implementation in `src/libplatform/default-platform.h`
 
-```c++
+```cpp
 class Platform {                                                                
  public:
   ...
@@ -33,7 +33,7 @@ class Platform {
 ### DefaultPlatform
 This is the default Platform implementation that ships with V8.
 
-```c++
+```cpp
 class V8_PLATFORM_EXPORT DefaultPlatform : public NON_EXPORTED_BASE(Platform) { 
  public:                                                                           
   explicit DefaultPlatform(                                                        
@@ -48,13 +48,13 @@ class V8_PLATFORM_EXPORT DefaultPlatform : public NON_EXPORTED_BASE(Platform) {
 ```
 
 `IdelTaskSupport` is an enum defined in `libplatform.h`:
-```c++
+```cpp
 enum class IdleTaskSupport { kDisabled, kEnabled };
 ```
 And we can see that if it is not specified it will be `kDisabled`.
 I'm currently most interested in how and what threads are used for and the
 max number of threads is:
-```c++
+```cpp
 constexpr int kMaxThreadPoolSize = 16;
 ```
 If this value is not specified explicitely we can see above that it will get
@@ -65,7 +65,7 @@ If we look at the private members of DefaultPlatform we can see that it has a
 field named `worker_threads_task_runner_` which is of type
 `DefaultWorkerThreadsTaskRunner` and this class is declared in 
 `src/libplatform/default-worker-threads-task-runner.h`.
-```c++
+```cpp
 class V8_PLATFORM_EXPORT DefaultWorkerThreadsTaskRunner                            
     : public NON_EXPORTED_BASE(TaskRunner) {
  public:
@@ -88,7 +88,7 @@ class V8_PLATFORM_EXPORT DefaultWorkerThreadsTaskRunner
 }
 ```
 We can find the concrete implementation in `src/libplatform/default-worker-threads-task-runner.cc'.
-```c++
+```cpp
 DefaultWorkerThreadsTaskRunner::DefaultWorkerThreadsTaskRunner(
     uint32_t thread_pool_size, TimeFunction time_function)
     : queue_(time_function), time_function_(time_function) {
@@ -104,7 +104,7 @@ in `src/base/platform/platform.h`.
 
 Now, what kind of things tasks are submitted to this pool of threads?  
 One example is when compiling wasm:
-```c++
+```cpp
   V8::GetCurrentPlatform()->CallOnWorkerThread(std::move(task));
 ```
 Also there are many calls from the heap namespace with handles garbage collection.
@@ -112,7 +112,7 @@ Also there are many calls from the heap namespace with handles garbage collectio
 
 ### TaskRunner
 If declared in `include/v8-platform.h`
-```c++
+```cpp
 class Task {
  public:
   virtual ~Task() = default;

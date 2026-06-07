@@ -2,7 +2,7 @@
 A Promise is an object which has a state. For example, we can create a promise
 using the following call:
 
-```c++
+```cpp
   i::Handle<i::JSPromise> promise = factory->NewJSPromise();
   print_handle(promise);
 ```
@@ -21,7 +21,7 @@ This will output:
 The implementation for `JSPromise` can be found in `src/objects/js-promise.h`.
 
 Now, `factory->NewJSPromise` looks like this:
-```c++
+```cpp
 Handle<JSPromise> Factory::NewJSPromise() {
   Handle<JSPromise> promise = NewJSPromiseWithoutHook();
   isolate()->RunPromiseHook(PromiseHookType::kInit, promise, undefined_value());
@@ -48,7 +48,7 @@ $1 = {<v8::internal::HandleBase> = {location_ = 0x20a7c68}, <No data fields>}
 ```
 That did tell me much. But if we look at `src/execution/isolate-inl.h` we can
 find:
-```c++
+```cpp
 #define NATIVE_CONTEXT_FIELD_ACCESSOR(index, type, name)    \
   Handle<type> Isolate::name() {                            \
     return Handle<type>(raw_native_context().name(), this); \
@@ -61,13 +61,13 @@ NATIVE_CONTEXT_FIELDS(NATIVE_CONTEXT_FIELD_ACCESSOR)
 ```
 And `NATIVE_CONTEXT_FIELDS` can be found in "src/objects/contexts.h" which is
 included by isolate.h (which isolate-inl.h includes). In contexts.h we find:
-```c++
+```cpp
 #define NATIVE_CONTEXT_FIELDS(V)
   ...
   V(PROMISE_FUNCTION_INDEX, JSFunction, promise_function)
 ```
 So the preprocessor will generate the following functions for promise_function:
-```c++
+```cpp
 inline Handle<JSFunction> promise_function();
 inline bool is_promise_function(JSFunction value);
 
@@ -79,7 +79,7 @@ bool Isolate::is_promise_function(JSFunction value) {
 }
 ```
 And the functions that are called from the above (in src/objects/contexts.h):
-```c++
+```cpp
 inline void set_promise_function(JSFunction value);
 inline bool is_promise_function(JSFunction value) const;
 inline JSFunction promise_function() const;
@@ -103,7 +103,7 @@ So that answers where the function is declared and defined and what it returns.
 We can find the torque source file in `src/builtins/promise-constructor.tq` which
 has comments that refer to the emcascript spec. In our case this is
 [promise-executor](https://tc39.es/ecma262/#sec-promise-executor)
-```c++
+```cpp
   transitioning javascript builtin                                                 
   PromiseConstructor(                                                              
       js-implicit context: NativeContext, receiver: JSAny,                         
@@ -127,7 +127,7 @@ And in the torque source file:
   }
 ```
 And in the generated CodeStubAssembler c++ source for this:
-```c++
+```cpp
 TF_BUILTIN(PromiseConstructor, CodeStubAssembler) {                             
   compiler::CodeAssemblerState* state_ = state();
   compiler::CodeAssembler ca_(state());
@@ -151,7 +151,7 @@ TF_BUILTIN(PromiseConstructor, CodeStubAssembler) {
   }
 ```
 Now, `TF_BUILTIN` is a macro on `src/builtins/builtins-utils-gen.h`. 
-```c++
+```cpp
 #define TF_BUILTIN(Name, AssemblerBase)                                 \
   class Name##Assembler : public AssemblerBase {                        \
    public:                                                              \
@@ -177,7 +177,7 @@ Now, `TF_BUILTIN` is a macro on `src/builtins/builtins-utils-gen.h`.
 ```
 
 So the above will be expanded by the preprocessor into:
-```c++
+```cpp
 TF_BUILTIN(PromiseConstructor, CodeStubAssembler) {                             
 class PromiseConstructorAssembler : public CodeStubAssembler {
  public:
@@ -215,7 +215,7 @@ $ objdump -d ../v8_src/v8/out/x64.release_gcc/obj/torque_generated_initializers/
 ```
 
 And this builtin is hooked up by `src/init/boostraper.cc` in:
-```c++
+```cpp
 void Genesis::InitializeGlobal(Handle<JSGlobalObject> global_object,
                                Handle<JSFunction> empty_function) {
   ...
@@ -227,7 +227,7 @@ void Genesis::InitializeGlobal(Handle<JSGlobalObject> global_object,
     InstallWithIntrinsicDefaultProto(isolate_, promise_fun, Context::PROMISE_FUNCTION_INDEX); 
 ```
 Install function takes the following parameters:
-```c++
+```cpp
 V8_NOINLINE Handle<JSFunction> InstallFunction(
     Isolate* isolate, Handle<JSObject> target, const char* name,
     InstanceType type, int instance_size, int inobject_properties,
@@ -253,14 +253,14 @@ Details about [InstanceType](#instancetype).
 
 And we can see that we passing in `Builtins::kPromiseConstructor`. This is declared 
 in `out/x64.release_gcc/gen/torque-generated/builtin-definitions-tq.h`:
-```c++
+```cpp
 #define BUILTIN_LIST_FROM_TORQUE(CPP, TFJ, TFC, TFS, TFH, ASM) \
 ...
 TFJ(PromiseConstructor, 1, kReceiver, kExecutor) \ 
 ```
 For full details see the [Torque](#torque) section. We will get the following
 in `builtins.h` (after being preprocessed):
-```c++
+```cpp
 class Builtins {
   enum Name : int32_t {
     ...
@@ -272,7 +272,7 @@ class Builtins {
 };
 ``` 
 And and in builtins.cc (also after being preprocessed):
-```c++
+```cpp
 struct Builtin_PromiseConstructor_InterfaceDescriptor {
   enum ParameterIndices {
     kJSTarget = compiler::CodeAssembler::kTargetParameterIndex,

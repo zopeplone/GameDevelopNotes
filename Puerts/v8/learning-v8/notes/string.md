@@ -33,7 +33,7 @@ Note that v8::String is declared in `include/v8.h`.
 property name should extend Name.
 
 Looking at the declaration in include/v8.h we find the following:
-```c++
+```cpp
     int GetIdentityHash();
     static Name* Cast(Value* obj)
 ```
@@ -102,7 +102,7 @@ the character preceeding it.
 A String extends `Name` and has a length and content. The content can be made
 up of 1 or 2 byte characters.
 Looking at the declaration in include/v8.h we find the following:
-```c++
+```cpp
     enum Encoding {
       UNKNOWN_ENCODING = 0x1,
       TWO_BYTE_ENCODING = 0x0,
@@ -116,7 +116,7 @@ Looking at the declaration in include/v8.h we find the following:
 Example usages can be found in [test/string_test.cc](./test/string_test.cc).
 Looking at the functions I've seen one that returns the actual bytes
 from the String. You can get at the in utf8 format using:
-```c++
+```cpp
     String::Utf8Value print_value(joined);
     std::cout << *print_value << '\n';
 ```
@@ -147,11 +147,11 @@ So we can see that one and two in str are pointers to existing strings.
 This function was introduced in b097a8e5de7.
 
 The normal way of creating a Local<String> would be to use:
-```c++
+```cpp
   Local<String> str = String::NewFromUtf8(isolate_, "åäö").ToLocalChecked();    
 ```
 Now, String::NewFromUtf8 looks like this:
-```c++
+```cpp
 MaybeLocal<String> String::NewFromUtf8(Isolate* isolate, const char* data,           
                                        NewStringType type, int length) {        
   NEW_STRING(isolate, String, NewFromUtf8, char, data, type, length);           
@@ -163,7 +163,7 @@ We can take a look at the expanded macro using:
 ```console
 $ g++ -I./out/x64.release_gcc/gen -I./include -I. -E src/api/api.cc > output
 ```
-```c++
+```cpp
 MaybeLocal<String> String::NewFromUtf8(Isolate* isolate, const char* data,      
                                        NewStringType type, int length) {        
   MaybeLocal<String> result;
@@ -190,7 +190,7 @@ MaybeLocal<String> String::NewFromUtf8(Isolate* isolate, const char* data,
 ```
 There are a number of checks that are not required when we have a string literal,
 and some that can be checked at compile time, like the max length. 
-```c++
+```cpp
   template <int N>                                                              
   static V8_WARN_UNUSED_RESULT Local<String> NewFromUtf8Literal(                
       Isolate* isolate, const char (&literal)[N],                                    

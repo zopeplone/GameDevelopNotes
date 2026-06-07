@@ -29,7 +29,7 @@ There is an example of running a microtask in [microtask_test](../test/microtask
 
 The Isolate class exposes a number of functions related to enqueueing and running
 microtasks:
-```c++
+```cpp
 class V8_EXPORT Isolate {                                                       
  public:     
  ...
@@ -50,7 +50,7 @@ $ lldb -- ./test/microtask_test
 `Isolate::EnqueueMicrotask` can be found in `src/api/api.cc`
 The actual call will end up in `microtask-queue.cc` which can be found in
 `src/execution/microtask-queue.cc`:
-```c++
+```cpp
 void MicrotaskQueue::EnqueueMicrotask(v8::Isolate* v8_isolate,
                                       v8::Local<Function> function) {
   Isolate* isolate = reinterpret_cast<Isolate*>(v8_isolate);

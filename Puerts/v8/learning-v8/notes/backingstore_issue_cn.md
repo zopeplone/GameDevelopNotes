@@ -32,7 +32,7 @@ Note: Google Test filter = EnvironmentTest.BufferWithFreeCallbackIsDetached
 因此 asan 指出被删除的类型大小不匹配，这是正确的。我将在下面详细介绍，但简而言之，asan 会记录 `v8::internal::BackingStore` 实例（48 字节类型）的创建时间，稍后当对该内存分配的指针调用 delete 时，大小将是 1（`v8::BackingStore`）。
 
 我们可以通过设置以下内容来绕过测试中的此错误：
-```c++
+```cpp
 extern "C" const char* __asan_default_options() {
   return "new_delete_type_mismatch=0";
 }
@@ -42,7 +42,7 @@ extern "C" const char* __asan_default_options() {
 
 虽然结合 Node 测试 fixture 来理解有些困难，但在 [backingstore_test.cc](../test/backingstore_test.cc) 中有一个独立的示例。
 我们将重点关注该示例的以下部分：
-```c++
+```cpp
   Local<ArrayBuffer> ab;
   {
     std::unique_ptr<BackingStore> bs = ArrayBuffer::NewBackingStore(
@@ -53,7 +53,7 @@ extern "C" const char* __asan_default_options() {
   ab->Detach();
 ```
 如果我们查看 `src/api/api.cc` 中的 `v8::ArrayBuffer::NewBackingStore`，有以下内容：
-```c++
+```cpp
 std::unique_ptr<v8::BackingStore> v8::ArrayBuffer::NewBackingStore(
     void* data, size_t byte_length, v8::BackingStore::DeleterCallback deleter,
     void* deleter_data) {
@@ -66,7 +66,7 @@ std::unique_ptr<v8::BackingStore> v8::ArrayBuffer::NewBackingStore(
 }
 ```
 注意，`unique_ptr` 的类型是 `v8::internal::BackingStoreBase`，而 `WrapAllocation` 返回 `std::unique_ptr<v8::internal::BackingStore>`：
-```c++
+```cpp
 std::unique_ptr<BackingStore> BackingStore::WrapAllocation(
     void* allocation_base, size_t allocation_length,
     v8::BackingStore::DeleterCallback deleter, void* deleter_data,
@@ -89,7 +89,7 @@ std::unique_ptr<BackingStore> BackingStore::WrapAllocation(
 ```
 `WrapAllocation` 创建一个新的 `v8::internal::BackingStore`，然后在 unique_ptr 中返回，但请记住，存储该指针的类型是 `std::unique_ptr<i::BackingStoreBase>`。
 然后由 `ArrayBuffer::NewBackingStore` 将其转换为 `v8::BackingStore` 后返回：
-```c++
+```cpp
   std::unique_ptr<i::BackingStoreBase> backing_store =
       i::BackingStore::WrapAllocation(data, byte_length, deleter, deleter_data,
                                       i::SharedFlag::kNotShared);
@@ -99,7 +99,7 @@ std::unique_ptr<BackingStore> BackingStore::WrapAllocation(
 注意，`backing_store` 的类型是 __v8::internal::BackingStoreBase__，因此我们在这里使用基类。然后将其转换为 `v8::BackingStore`。
 
 接下来，返回的 `v8::BackingStore` 将被传入 `ArrayBuffer::New`：
-```c++
+```cpp
   Local<ArrayBuffer> ab;
   {
     std::unique_ptr<BackingStore> bs = ArrayBuffer::NewBackingStore(
@@ -107,12 +107,12 @@ std::unique_ptr<BackingStore> BackingStore::WrapAllocation(
     ab = ArrayBuffer::New(isolate_, std::move(bs));
 ```
 然后 backingstore 被移动到 `ArrayBuffer::New`（在 `src/api/api.cc` 中）：
-```c++
+```cpp
   std::shared_ptr<i::BackingStore> i_backing_store(ToInternal(std::move(backing_store)));
   i::Handle<i::JSArrayBuffer> obj = i_isolate->factory()->NewJSArrayBuffer(std::move(i_backing_store));
 ```
 `ToInternal` 如下所示：
-```c++
+```cpp
 std::shared_ptr<i::BackingStore> ToInternal(
     std::shared_ptr<i::BackingStoreBase> backing_store) {
   return std::static_pointer_cast<i::BackingStore>(backing_store);
@@ -121,7 +121,7 @@ std::shared_ptr<i::BackingStore> ToInternal(
 注意，参数类型是 `std::shared_ptr<i::BackingStoreBase>`，而传入的类型将是 `std::unique_ptr<v8::BackingStore>`。然后将其转换为 `std::shared_ptr<i::BackingStore>`。
 
 `NewJSArrayBuffer` 将调用 `js-array-buffer.cc` 中的 `Attach`：
-```c++
+```cpp
 void JSArrayBuffer::Attach(std::shared_ptr<BackingStore> backing_store) {
   Isolate* isolate = GetIsolate();
   set_backing_store(isolate, backing_store->buffer_start());
@@ -137,7 +137,7 @@ void JSArrayBuffer::Attach(std::shared_ptr<BackingStore> backing_store) {
 }
 ```
 现在，稍后某个时刻 `ab->Detach()` 将被调用，这将进入 `src/objects/js-array-buffer.cc`：
-```c++
+```cpp
 void JSArrayBuffer::Detach(bool force_for_wasm_memory) {
   ...
   Isolate* const isolate = GetIsolate();

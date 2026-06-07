@@ -18,7 +18,7 @@ $ mksnapshot --help
 Usage: ./out/x64.release_gcc/mksnapshot [--startup-src=file] [--startup-blob=file] [--embedded-src=file] [--embedded-variant=label] [--target-arch=arch] [--target-os=os] [extras]
 ```
 但奇怪的是使用说明从未被打印，取而代之的是正常的 V8/D8 选项。如果我们查看 `src/snapshot/snapshot.cc`，我们可以看到：
-```c++
+```cpp
   // 如果解析命令行 flags 时发生错误或设置了 help flag，则打印使用说明。
   int result = i::FlagList::SetFlagsFromCommandLine(&argc, argv, true, false);
   if (result > 0 || (argc > 3) || i::FLAG_help) {
@@ -29,7 +29,7 @@ Usage: ./out/x64.release_gcc/mksnapshot [--startup-src=file] [--startup-blob=fil
   }
 ```
 `SetFlagsFromCommandLine` 定义在 `src/flags/flags.cc` 中：
-```c++
+```cpp
 int FlagList::SetFlagsFromCommandLine(int* argc, char** argv, bool remove_flags) {
   ...
   if (FLAG_help) {
@@ -47,7 +47,7 @@ Usage: ./out/x64.release_gcc/mksnapshot --startup_src=... --startup_blob=... [ex
 ```
 
 mksnapshot 所做的与普通 V8 应用程序的启动大致相同，它必须初始化 V8 本身（`src/snapshot/snapshot.cc`）：
-```c++
+```cpp
   v8::V8::InitializeICUDefaultLocation(argv[0]);
   std::unique_ptr<v8::Platform> platform = v8::platform::NewDefaultPlatform();
   v8::V8::InitializePlatform(platform.get());
@@ -56,13 +56,13 @@ mksnapshot 所做的与普通 V8 应用程序的启动大致相同，它必须�
 注意，这与我们在 [hello-world](../hello-world.cc) 或 [v8_test_fixture.h](../test/v8_test_fixture.h) 中所做的完全一样。
 
 接下来，我们有：
-```c++
+```cpp
   SnapshotFileWriter snapshot_writer;
   snapshot_writer.SetSnapshotFile(i::FLAG_startup_src);
   snapshot_writer.SetStartupBlobFile(i::FLAG_startup_blob);
 ```
 `i::FLAG_startup_src` 定义在 `src/flags/flag-definitions.h` 中：
-```c++
+```cpp
 DEFINE_STRING(startup_src, nullptr,
               "Write V8 startup as C++ src. (mksnapshot only)")
 
@@ -134,7 +134,7 @@ rule ___run_mksnapshot_default___build_toolchain_linux_x64__rule
 $ ../v8_src/v8/out/x64.release_gcc/mksnapshot --startup_src=gen/example_snapshot.cc
 ```
 之后我们可以检查 `gen/example_snapshot.cc`，它将包含名为 `blob_data` 的字节数组中的序列化 snapshot。
-```c++
+```cpp
 #include "src/snapshot/snapshot.h"
 
 namespace v8 {
@@ -159,12 +159,12 @@ $ ls -l -h gen/example-blob.bin
 -rw-rw-r--. 1 danielbevenius danielbevenius 130K Jul 14 09:52 gen/example-blob.bin
 ```
 然后可以使用以下方式指定此二进制文件：
-```c++
+```cpp
   V8::InitializeExternalStartupDataFromFile("../gen/example-blob.bin");
 ```
 
 `src/init/startup-data-util.cc` 包含此功能的实现，请注意它受宏保护：
-```c++
+```cpp
 void InitializeExternalStartupDataFromFile(const char* snapshot_blob) {
 #ifdef V8_USE_EXTERNAL_STARTUP_DATA
   LoadFromFile(snapshot_blob);

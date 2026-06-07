@@ -71,7 +71,7 @@ was created (which is the type of 48 bytes) and later when delete is called
 on a pointer to that memory allocation the size will be on 1 (`v8::BackingStore`).
 
 We can work around this error for our test by setting the following:
-```c++
+```cpp
 extern "C" const char* __asan_default_options() {
   return "new_delete_type_mismatch=0";
 }
@@ -82,7 +82,7 @@ The following are notes from investigating this issue.
 Now this is somewhat hard to follow with the Node testing fixture mixed in but
 there is a standalone example in [backingstore_test.cc](../test/backingstore_test.cc).
 We will be focusing on the following parts of that example:
-```c++
+```cpp
   Local<ArrayBuffer> ab;
   {
     std::unique_ptr<BackingStore> bs = ArrayBuffer::NewBackingStore(
@@ -94,7 +94,7 @@ We will be focusing on the following parts of that example:
 ```
 If we take a look at `v8::ArrayBuffer::NewBackingStore` in `src/api/api.cc` we have
 the following:
-```c++
+```cpp
 std::unique_ptr<v8::BackingStore> v8::ArrayBuffer::NewBackingStore(
     void* data, size_t byte_length, v8::BackingStore::DeleterCallback deleter,
     void* deleter_data) {
@@ -108,7 +108,7 @@ std::unique_ptr<v8::BackingStore> v8::ArrayBuffer::NewBackingStore(
 ```
 Notice that the `unique_ptr` is of type `v8::internal::BackingStoreBase`, and
 `WrapAllocation` returns `std::unique_ptr<v8::internal::BackingStore>`:
-```c++
+```cpp
 std::unique_ptr<BackingStore> BackingStore::WrapAllocation(
     void* allocation_base, size_t allocation_length,
     v8::BackingStore::DeleterCallback deleter, void* deleter_data,
@@ -134,7 +134,7 @@ in a unique_ptr but recall that the type of pointer this is stored in is
 `std::unique_ptr<i::BackingStoreBase`.
 This is then returned by `ArrayBuffer::NewBackingStore` with a cast to
 `v8::BackingStore`:
-```c++
+```cpp
   std::unique_ptr<i::BackingStoreBase> backing_store =
       i::BackingStore::WrapAllocation(data, byte_length, deleter, deleter_data,
                                       i::SharedFlag::kNotShared);
@@ -145,7 +145,7 @@ Notice that `backing_store` is of type __v8::internal::BackingStoreBase__, so
 we are using the base class here. We are then casting it to a `v8::BackingStore`.
 
 Next, the returned `v8::BackingStore` will be passed into `ArrayBuffer::New`:
-```c++
+```cpp
   Local<ArrayBuffer> ab;
   {
     std::unique_ptr<BackingStore> bs = ArrayBuffer::NewBackingStore(
@@ -153,12 +153,12 @@ Next, the returned `v8::BackingStore` will be passed into `ArrayBuffer::New`:
     ab = ArrayBuffer::New(isolate_, std::move(bs));
 ```
 The backingstore is then moved into `ArrayBuffer::New` (in src/api/api.cc):
-```c++
+```cpp
   std::shared_ptr<i::BackingStore> i_backing_store(ToInternal(std::move(backing_store)));
   i::Handle<i::JSArrayBuffer> obj = i_isolate->factory()->NewJSArrayBuffer(std::move(i_backing_store));
 ```
 `ToInternal` looks like this:
-```c++
+```cpp
 std::shared_ptr<i::BackingStore> ToInternal(
     std::shared_ptr<i::BackingStoreBase> backing_store) {
   return std::static_pointer_cast<i::BackingStore>(backing_store);
@@ -169,7 +169,7 @@ the passed in type will be `std::unique_ptr<v8::BackingStore>`. This is then
 being cast into `std::shared_ptr<i::BackingStore>`. 
 
 `NewJSArrayBuffer` will call `Attach` in js-array-buffer.cc:
-```c++
+```cpp
 void JSArrayBuffer::Attach(std::shared_ptr<BackingStore> backing_store) {
   Isolate* isolate = GetIsolate();
   set_backing_store(isolate, backing_store->buffer_start());
@@ -186,7 +186,7 @@ void JSArrayBuffer::Attach(std::shared_ptr<BackingStore> backing_store) {
 ```
 Now, at some later point ab->Detach() will be called and this will end up in
 `src/objects/js-array-buffer.cc`:
-```c++
+```cpp
 void JSArrayBuffer::Detach(bool force_for_wasm_memory) {
   ...
   Isolate* const isolate = GetIsolate();
@@ -208,7 +208,7 @@ void JSArrayBuffer::Detach(bool force_for_wasm_memory) {
 ```
 When this pointer goes out of scope and the use_count is 0 it will be deallocated
 and `v8::BackingStore::~BackingStore` destructor will be called:
-```c++
+```cpp
 v8::BackingStore::~BackingStore() {
   auto i_this = reinterpret_cast<const i::BackingStore*>(this);
   i_this->~BackingStore();  // manually call internal destructor
@@ -222,7 +222,7 @@ been discussed above but in a single main function.
 
 First lets look at the class hierarchy for the BackingStore's looks like this,
 in `include/v8.h` we have:
-```c++
+```cpp
 class V8_EXPORT BackingStore : public v8::internal::BackingStoreBase {
  public:
   ~BackingStore();
@@ -230,7 +230,7 @@ class V8_EXPORT BackingStore : public v8::internal::BackingStoreBase {
 };
 ```
 In `src/objects/backing-store.h` we have:
-```c++
+```cpp
 class V8_EXPORT_PRIVATE BackingStore : public BackingStoreBase {
  public:
   ~BackingStore();
@@ -240,7 +240,7 @@ class V8_EXPORT_PRIVATE BackingStore : public BackingStoreBase {
 And we have the definition of `v8::internal::BackingStoreBase` in
 `include/v8-internal.h`, which I've added a destructor which prints out the this
 pointer to help with debugging this issue:
-```c++
+```cpp
 class BackingStoreBase {
   public:
     ~BackingStoreBase() {
@@ -251,7 +251,7 @@ class BackingStoreBase {
 In [backing-store-original.cc](../src/backing-store-original.cc) BaseStore plays
 the part of `v8::internal::BackingStoreBase`, InternalStore represents
 `v8::internal::BackingStore`, and PublicStore represents `v8::BackingStore`:
-```c++
+```cpp
   std::unique_ptr<BaseStore> base = std::unique_ptr<BaseStore>(new InternalStore());
   { 
     std::unique_ptr<PublicStore> p_store = std::unique_ptr<PublicStore>(static_cast<PublicStore*>(base.release()));

@@ -3,19 +3,19 @@ This document will try to describe the Heap in V8 and the related classes and
 functions.
 
 When a V8 Isolate is created it is usually done by something like this:
-```c++
+```cpp
   isolate_ = v8::Isolate::New(create_params_);
 ```
 The first thing that happens in v8::Isolate::New is that the Isolate is
 allocated:
-```c++
+```cpp
 Isolate* Isolate::New(const Isolate::CreateParams& params) {
   Isolate* isolate = Allocate()
   ...
 }
 ```
 And allocate calls v8::internal::Isolate::New and casts it back to v8::Isolate:
-```c++
+```cpp
 Isolate* Isolate::Allocate() {
   return reinterpret_cast<Isolate*>(i::Isolate::New());
 }
@@ -24,7 +24,7 @@ Isolate* Isolate::Allocate() {
 ### IsolateAllocator
 Each Isolate has an IsolateAllocator instance associated with it which is passes
 into the constructor:
-```c++
+```cpp
 Isolate* Isolate::New(IsolateAllocationMode mode) {
   std::unique_ptr<IsolateAllocator> isolate_allocator =
       std::make_unique<IsolateAllocator>(mode);
@@ -39,7 +39,7 @@ where the new Isolate should be constructed (isolate_ptr).
 
 The definition of IsolateAllocator can be found in `src/init/isolate-allocator.h`
 and below are a few of the methods and fields that I found interesting:
-```c++
+```cpp
 class V8_EXPORT_PRIVATE IsolateAllocator final {
  public:
   void* isolate_memory() const { return isolate_memory_; }
@@ -65,19 +65,19 @@ v8::PageAllocator* Isolate::page_allocator() {
 }
 ```
 So, we are in `Isolate::New(IsolationAllocationMode)` and the next line is:
-```c++
+```cpp
   std::unique_ptr<IsolateAllocator> isolate_allocator =
       std::make_unique<IsolateAllocator>(mode);
 }
 ```
 
 The default allocation mode will be `IsolateAllocationMode::kInV8Heap`:
-```c++
+```cpp
   static Isolate* New(
       IsolateAllocationMode mode = IsolateAllocationMode::kDefault);
 ```
 And the possible options for mode are:
-```c++
+```cpp
   // Allocate Isolate in C++ heap using default new/delete operators.
   kInCppHeap,
 
@@ -93,7 +93,7 @@ And the possible options for mode are:
 ```
 
 The constructor takes an AllocationMode as mentioned above.
-```c++
+```cpp
 IsolateAllocator::IsolateAllocator(IsolateAllocationMode mode) {
 #if V8_TARGET_ARCH_64_BIT
   if (mode == IsolateAllocationMode::kInV8Heap) {
@@ -104,7 +104,7 @@ IsolateAllocator::IsolateAllocator(IsolateAllocationMode mode) {
 #endif  // V8_TARGET_ARCH_64_BIT
 ```
 Lets take a closer look at InitReservation (`src/init/isolate-alloctor.cc`).
-```c++
+```cpp
 Address IsolateAllocator::InitReservation() {
   v8::PageAllocator* platform_page_allocator = GetPlatformPageAllocator();
   ...
@@ -116,7 +116,7 @@ Address IsolateAllocator::InitReservation() {
   reservation_ = std::move(reservation);
 ```
 `GetPlatformPageAllocator()` can be found in `src/utils/allocation.cc`:
-```c++
+```cpp
 v8::PageAllocator* GetPlatformPageAllocator() {
   DCHECK_NOT_NULL(GetPageTableInitializer()->page_allocator());
   return GetPageTableInitializer()->page_allocator();
@@ -124,12 +124,12 @@ v8::PageAllocator* GetPlatformPageAllocator() {
 ```
 Now, GetPageTableInitializer is also defined in allocation.cc but is defined
 using a macro:
-```c++
+```cpp
 DEFINE_LAZY_LEAKY_OBJECT_GETTER(PageAllocatorInitializer,
                                 GetPageTableInitializer)
 ```
 This macro can be found in `src/base/lazy-instance.h`:
-```c++
+```cpp
 #define DEFINE_LAZY_LEAKY_OBJECT_GETTER(T, FunctionName, ...) \
   T* FunctionName() {                                         \
     static ::v8::base::LeakyObject<T> object{__VA_ARGS__};    \
@@ -137,13 +137,13 @@ This macro can be found in `src/base/lazy-instance.h`:
   }
 ```
 So the preprocess would expand the usage above to:
-```c++
+```cpp
   PageAllocatorInitializer* GetPageTableInitializer() {
     static ::v8::base::LeakyObject<PageAllocatorInitializer> object{};
     return object.get();
   }
 ```
-```c++
+```cpp
 PageAllocatorInitializer() {
     page_allocator_ = V8::GetCurrentPlatform()->GetPageAllocator();
     if (page_allocator_ == nullptr) {
@@ -154,7 +154,7 @@ PageAllocatorInitializer() {
 ```
 Notice that this is calling V8::GetCurrentPlatform() and recall that a
 platform is created and initialized before an Isolate can be created:
-```c++
+```cpp
     platform_ = v8::platform::NewDefaultPlatform();
     v8::V8::InitializePlatform(platform_.get());
     v8::V8::Initialize();
@@ -164,7 +164,7 @@ PageAllocator from the platform. How/when is this PageAllocator created?
 
 It is created in DefaultPlatform's constructor(src/libplatform/default-platform.cc)
 which is called by `NewDefaultPlatform`:
-```c++
+```cpp
 ```
 DefaultPlatform::DefaultPlatform(
     int thread_pool_size, IdleTaskSupport idle_task_support,
@@ -177,13 +177,13 @@ DefaultPlatform::DefaultPlatform(
 }
 ```
 PageAllocators constructor can be found in `src/base/page-allocator.cc`:
-```c++
+```cpp
 PageAllocator::PageAllocator()
     : allocate_page_size_(base::OS::AllocatePageSize()),
       commit_page_size_(base::OS::CommitPageSize()) {}
 ```
 The allocate_page_size_ is what would be retrieved by calling (on linux):
-```c++
+```cpp
 size_t OS::AllocatePageSize() {
   return static_cast<size_t>(sysconf(_SC_PAGESIZE));
 }
@@ -202,7 +202,7 @@ A page is the unit that is stored in a page frame:
 ``` 
 
 commit_page_size_ is implemented like this:
-```c++
+```cpp
 size_t OS::CommitPageSize() {
   static size_t page_size = getpagesize();
   return page_size;
@@ -214,7 +214,7 @@ confused about this. TODO: take a closer look at this.
 
 The internal PageAllocator extends the public one that is declared in
 `include/v8-platform.h`.
-```c++
+```cpp
 class V8_BASE_EXPORT PageAllocator
     : public NON_EXPORTED_BASE(::v8::PageAllocator) {
  private:
@@ -235,7 +235,7 @@ interacts with the underlying operating system via the base::OS class
 
 And this PageAllocator instance was created when the DefaultPlatform was
 created allowing it to be accessed using GetPlatformPageAllocator:
-```c++
+```cpp
 Address IsolateAllocator::InitReservation() {
   v8::PageAllocator* platform_page_allocator = GetPlatformPageAllocator();
   ...
@@ -250,7 +250,7 @@ Address IsolateAllocator::InitReservation() {
 Notice that a VirtualMemory instance is created and the arguments passed. This
 is actually part of a retry loop but I've excluded that above.
 VirtualMemory's constructor can be found in `src/utils/allocation.cc`:
-```c++
+```cpp
 VirtualMemory::VirtualMemory(v8::PageAllocator* page_allocator, size_t size,
                              void* hint, size_t alignment)
     : page_allocator_(page_allocator) {
@@ -263,7 +263,7 @@ VirtualMemory::VirtualMemory(v8::PageAllocator* page_allocator, size_t size,
 }
 ```
 And `AllocatePages` can be found in `src/base/page-allocator.cc`:
-```c++
+```cpp
 void* PageAllocator::AllocatePages(void* hint, size_t size, size_t alignment,
                                    PageAllocator::Permission access) {
   return base::OS::Allocate(hint, size, alignment,
@@ -273,7 +273,7 @@ void* PageAllocator::AllocatePages(void* hint, size_t size, size_t alignment,
 Which will lead us to `base::OS::Allocate` which is declared in `src/base/platform/platform.h`
 and the concrete version on my system (linux) can be found in platform-posix.cc
 which can be found in `src/base/platform/platform-posix.cc`:
-```c++
+```cpp
 void* Allocate(void* hint, size_t size, OS::MemoryPermission access, PageType page_type) {
   int prot = GetProtectionFromMemoryPermission(access);
   int flags = GetFlagsForMemoryPermission(access, page_type);
@@ -291,7 +291,7 @@ is doing.
 
 `prot` is the memory protection wanted for this mapping and is retrived by
 calling `GetProtectionFromMemoryPermission`:
-```c++
+```cpp
 int GetProtectionFromMemoryPermission(OS::MemoryPermission access) {
   switch (access) {
     case OS::MemoryPermission::kNoAccess:
@@ -313,7 +313,7 @@ is so that the memory mapping can be further subdivied and different permissions
 can be given later to a region using mprotect.
 
 Next we get the `flags` to be used in the mmap call:
-```c++
+```cpp
 enum class PageType { kShared, kPrivate };
 
 int GetFlagsForMemoryPermission(OS::MemoryPermission access,
@@ -327,7 +327,7 @@ PageType in our case is `kPrivate` so this will add the `MAP_PRIVATE` flag to
 the flags, in addition to `MAP_ANONYMOUS`.
 
 So the following values are used in the call to mmap:
-```c++
+```cpp
   void* result = mmap(hint, size, prot, flags, kMmapFd, kMmapFdOffset);
 ```
 ```console
@@ -359,7 +359,7 @@ on the type of contents that should be stored there, for example for code object
 it would be executable.
 
 So that will return the address to the new mapping, this will return us to:
-```c++
+```cpp
 void* OS::Allocate(void* hint, size_t size, size_t alignment,
                    MemoryPermission access) {
   ...
@@ -390,7 +390,7 @@ void* OS::Allocate(void* hint, size_t size, size_t alignment,
 TODO: figure out what why this unmapping is done.
 This return will return to `AllocatePages` which will just return to
 VirtualMemory's constructor where the address will be casted to an Address.
-```c++
+```cpp
  Address address = reinterpret_cast<Address>(
       AllocatePages(page_allocator_, hint, RoundUp(size, page_size), alignment,
                     PageAllocator::kNoAccess));
@@ -413,7 +413,7 @@ After this call the VirtualMemory instance will look like this:
 ```
 
 After `InitReservation` returns, we will be in `IsolateAllocator::IsolateAllocator`:
-```c++
+```cpp
   if (mode == IsolateAllocationMode::kInV8Heap) {
     Address heap_reservation_address = InitReservation();
     CommitPagesForIsolate(heap_reservation_address);
@@ -422,7 +422,7 @@ After `InitReservation` returns, we will be in `IsolateAllocator::IsolateAllocat
 ```
 
 In CommitPagesForIsolate we have :
-```c++
+```cpp
 void IsolateAllocator::CommitPagesForIsolate(Address heap_reservation_address) {
   v8::PageAllocator* platform_page_allocator = GetPlatformPageAllocator();
 
@@ -461,7 +461,7 @@ object it will call BoundedPageAllocator's AllocatePages implementation which
 will delegate to RegionAllocator and provide memory for the object. 
 
 Next in `CommitPagesForIsolate` we have:
-```c++
+```cpp
   Address isolate_address = isolate_root - Isolate::isolate_root_bias();
   Address isolate_end = isolate_address + sizeof(Isolate);
   {
@@ -478,7 +478,7 @@ The above will reserve the address space of the Isolate so that is not used
 for other object.
 
 `AllocatePagesAt` will call `BoundedPageAllocator::AllocatePagesAt`:
-```c++
+```cpp
 bool BoundedPageAllocator::AllocatePagesAt(Address address, size_t size,
                                            PageAllocator::Permission access) {
   if (!region_allocator_.AllocateRegionAt(address, size)) {
@@ -491,7 +491,7 @@ bool BoundedPageAllocator::AllocatePagesAt(Address address, size_t size,
 ```
 
 `SetPermissions` can be found in `platform-posix.cc` and looks like this:
-```c++
+```cpp
 bool OS::SetPermissions(void* address, size_t size, MemoryPermission access) {
   ...
   int prot = GetProtectionFromMemoryPermission(access);
@@ -501,15 +501,15 @@ bool OS::SetPermissions(void* address, size_t size, MemoryPermission access) {
 
 
 Later in `Isolate::Init` the heap will be set up:
-```c++
+```cpp
 heap_.SetUp();
 ```
-```c++
+```cpp
   memory_allocator_.reset(
       new MemoryAllocator(isolate_, MaxReserved(), code_range_size_));
 ```
 In MemoryAllocator's constructor we have a the following function call:
-```c++
+```cpp
 MemoryAllocator::MemoryAllocator(Isolate* isolate, size_t capacity,
                                  size_t code_range_size)
     : isolate_(isolate),
@@ -531,7 +531,7 @@ A MemoryAllocator instance will also have a code_page_allocator.
 When an object is to be created it is done so using one of the Space implementations
 that are available in the Heap class. These spaces are create by 
 `Heap::SetupSpaces`, which is called from `Isolate::Init`:
-```c++
+```cpp
 void Heap::SetUpSpaces() {
   space_[NEW_SPACE] = new_space_ =
       new NewSpace(this, memory_allocator_->data_page_allocator(),
@@ -590,11 +590,11 @@ What are the spaces that are defined?
 * others ?
 
 BaseSpace extends Malloced:
-```c++
+```cpp
 class V8_EXPORT_PRIVATE BaseSpace : public Malloced {
 ```
 `Malloced` which can be found in in `src/utils/allocation.h`:
-```c++
+```cpp
 // Superclass for classes managed with new & delete.
 class V8_EXPORT_PRIVATE Malloced {
  public:
@@ -603,7 +603,7 @@ class V8_EXPORT_PRIVATE Malloced {
 };
 ```
 And we can find the implemention in `src/utils/allocation.cc`:
-```c++
+```cpp
 void* Malloced::operator new(size_t size) {
   void* result = AllocWithRetry(size);
   if (result == nullptr) {
@@ -632,7 +632,7 @@ other types of operator overloading in c++. Here is a standalone example
 
 The spaces are create by `Heap::SetupSpaces`, which is called from
 `Isolate::Init`:
-```c++
+```cpp
 void Heap::SetUpSpaces() {
   space_[NEW_SPACE] = new_space_ =
       new NewSpace(this, memory_allocator_->data_page_allocator(),
@@ -653,7 +653,7 @@ An instance of BaseSpace has a Heap associated with it, an AllocationSpace, and
 committed and uncommited counters.
 
 `AllocationSpace` is a enum found in `src/common/globals.h`:
-```c++
+```cpp
 enum AllocationSpace {
   RO_SPACE,      // Immortal, immovable and immutable objects,
   NEW_SPACE,     // Young generation semispaces for regular objects collected with
@@ -741,7 +741,7 @@ The pages (page 1 and page 2 above) can be compacted sometimes. TODO: when/how?
 Class NewSpace extends SpaceWithLinearArea (can be found in `src/heap/spaces.h`).
 
 When a NewSpace instance is created it is passed a page allocator:
-```c++
+```cpp
   space_[NEW_SPACE] = new_space_ =
       new NewSpace(this, memory_allocator_->data_page_allocator(),
                    initial_semispace_size_, max_semi_space_size_);
@@ -755,7 +755,7 @@ moved etc).
 
 A BasicMemoryChunk is created by specifying the size and the start and end
 address:
-```c++
+```cpp
 BasicMemoryChunk::BasicMemoryChunk(size_t size, Address area_start,
                                    Address area_end) {
   size_ = size;
@@ -765,7 +765,7 @@ BasicMemoryChunk::BasicMemoryChunk(size_t size, Address area_start,
 ```
 So there is nothing else to creating an instance of a BasicMemoryChunk, but
 it has other protected fields like:
-```c++
+```cpp
   Heap* heap;
   size_t allocated_bytes_;
   size_t wasted_memory_;
@@ -783,7 +783,7 @@ it has other protected fields like:
 
 There is a static function named `Initialize` that does take a pointer to a
 Heap though:
-```c++
+```cpp
  static BasicMemoryChunk* Initialize(Heap* heap, Address base, size_t size,
                                       Address area_start, Address area_end,
                                       BaseSpace* owner,
@@ -797,7 +797,7 @@ Represents a memory area that is owned by a Space.
 
 Is a struct defined in `src/heap/memory-chunk.h` (there is another MemoryChunk
 struct in the namespace `v8::heap_internal` just in case you find it instead).
-```c++
+```cpp
 class MemoryChunk : public BasicMemoryChunk {
 
 };
@@ -807,13 +807,13 @@ class MemoryChunk : public BasicMemoryChunk {
 Is a class that extends MemoryChunk and has a size of 256K.
 
 The `Page` class can be found in `src/heap/spaces.h`
-```c++
+```cpp
 class Page : public MemoryChunk {
 }
 ```
 ### Heap
 A heap instance has the following members:
-```c++
+```cpp
   NewSpace* new_space_ = nullptr;
   OldSpace* old_space_ = nullptr;
   CodeSpace* code_space_ = nullptr;
@@ -827,7 +827,7 @@ A heap instance has the following members:
 ### AllocateRaw
 This is a method declared in `src/heap/heap.h` and will allocate an uninitialized
 object:
-```c++
+```cpp
  V8_WARN_UNUSED_RESULT inline AllocationResult AllocateRaw(
       int size_in_bytes, AllocationType allocation,
       AllocationOrigin origin = AllocationOrigin::kRuntime,
@@ -837,13 +837,13 @@ So we have the size of the object in bytes. And the other types are described
 in separate sections below.
 
 The implemementation for this method can be found in `src/heap/heap-inl.h`.
-```c++
+```cpp
   ...
   HeapObject object;
   AllocationResult allocation;
 ```
 This is then followed by checks or the AllocationType 
-```c++
+```cpp
   if (AllocationType::kYoung == type) {
     ...
     } else if (AllocationType::kCode == type) {
@@ -856,12 +856,12 @@ This is then followed by checks or the AllocationType
   }
 ```
 Lets take a closer look at `code_lo_space` which is a field in the Heap class.
-```c++
+```cpp
  private:
   CodeLargeObjectSpace* code_lo_space_ = nullptr;
 ```
 And it's `AllocateRaw` function looks like this:
-```c++
+```cpp
 AllocationResult CodeLargeObjectSpace::AllocateRaw(int object_size) {
   return OldLargeObjectSpace::AllocateRaw(object_size, EXECUTABLE);
 }
@@ -872,7 +872,7 @@ There is an example of AllocateRaw in [heap_test.cc](./test/heap_test.cc).
 
 
 ### AllocationType
-```c++
+```cpp
 enum class AllocationType : uint8_t {
   kYoung,    // Regular object allocated in NEW_SPACE or NEW_LO_SPACE
   kOld,      // Regular object allocated in OLD_SPACE or LO_SPACE
@@ -883,7 +883,7 @@ enum class AllocationType : uint8_t {
 ```
 
 ### AllocationOrigin
-```c++
+```cpp
 enum class AllocationOrigin {
   kGeneratedCode = 0,
   kRuntime = 1,
@@ -895,7 +895,7 @@ enum class AllocationOrigin {
 ```
 
 ### AllocationAlignement
-```c++
+```cpp
 enum AllocationAlignment {
   kWordAligned,
   kDoubleAligned,
@@ -914,7 +914,7 @@ data_page_allocator, and another that is for executable pages called
 code_page_allocator.
 
 The constructor can be found in `src/heap/memory-allocator.cc`:
-```c++
+```cpp
 MemoryAllocator::MemoryAllocator(Isolate* isolate, size_t capacity,
                                  size_t code_range_size)
     : isolate_(isolate),
@@ -933,7 +933,7 @@ We can see that the data_page_allocator_ is set to the isolates page_allocator.
 
 Notice that the above constructor calls `InitializeCodePageAllocator` which
 will set the `code_page_allocator`:
-```c++
+```cpp
 void MemoryAllocator::InitializeCodePageAllocator(
     v8::PageAllocator* page_allocator, size_t requested) {
 
@@ -982,18 +982,18 @@ Now, lets see what goes on when we create a new Object, say of type String.
     frame #5: 0x0000000000413fa4 string_test`StringTest_create_Test::TestBody(this=0x000000000048dff0) at string_test.cc:18:8
 ```
 If we look at the call `AllocateRawWithImmortalMap` we find:
-```c++
+```cpp
   HeapObject result = AllocateRaw(size, allocation, alignment);
 ```
 AllocateRaw will end up in FactoryBase<Impl>::AllocateRaw:
-```c++
+```cpp
 HeapObject FactoryBase<Impl>::AllocateRaw(int size, AllocationType allocation,
                                           AllocationAlignment alignment) {
   return impl()->AllocateRaw(size, allocation, alignment);
 }
 ```
 Which will end up in `Factory::AllocateRaw`:
-```c++
+```cpp
 HeapObject Factory::AllocateRaw(int size, AllocationType allocation,
                                 AllocationAlignment alignment) {
   return isolate()->heap()->AllocateRawWith<Heap::kRetryOrFail>(
@@ -1002,30 +1002,30 @@ HeapObject Factory::AllocateRaw(int size, AllocationType allocation,
 }
 ```
 
-```c++
+```cpp
    case kRetryOrFail:
 -> 297 	      return AllocateRawWithRetryOrFailSlowPath(size, allocation, origin,
    298 	                                                alignment);
 ```
-```c++
+```cpp
  5165	  AllocationResult alloc;
    5166	  HeapObject result =
 -> 5167	      AllocateRawWithLightRetrySlowPath(size, allocation, origin, alignment);
 ```
 
-```c++
+```cpp
 -> 5143	  HeapObject result;
    5144	  AllocationResult alloc = AllocateRaw(size, allocation, origin, alignment);
 ```
 
-```c++
+```cpp
 -> 210 	        allocation = new_space_->AllocateRaw(size_in_bytes, alignment, origin);
 ```
-```c++
+```cpp
 -> 95  	    result = AllocateFastUnaligned(size_in_bytes, origin);
 ```
 
-```c++
+```cpp
 AllocationResult NewSpace::AllocateFastUnaligned(int size_in_bytes,
                                                  AllocationOrigin origin) {
   Address top = allocation_info_.top();
@@ -1039,7 +1039,7 @@ of the address of mapped memory that this space manages. And after this top
 is increased by the size of the object. 
 
 `AllocateRawWithImmortalMap`:
-```c++
+```cpp
    818 	  HeapObject result = AllocateRaw(size, allocation, alignment);
 -> 819 	  result.set_map_after_allocation(map, SKIP_WRITE_BARRIER);
    820 	  return result;
@@ -1067,7 +1067,7 @@ This could be 4K or 64K on some systems.
 
 AreaSize:
 A PagedSpace has a field named area_size_ which is set in the constructor:
-```c++
+```cpp
 PagedSpace::PagedSpace(Heap* heap, AllocationSpace space,
                        Executability executable, FreeList* free_list,
                        LocalSpaceKind local_space_kind)
@@ -1078,7 +1078,7 @@ PagedSpace::PagedSpace(Heap* heap, AllocationSpace space,
   accounting_stats_.Clear();
 }
 ```
-```c++
+```cpp
 size_t MemoryChunkLayout::AllocatableMemoryInMemoryChunk(
     AllocationSpace space) {
   if (space == CODE_SPACE) {
@@ -1087,7 +1087,7 @@ size_t MemoryChunkLayout::AllocatableMemoryInMemoryChunk(
   return AllocatableMemoryInDataPage();
 }
 ```
-```c++
+```cpp
 size_t MemoryChunkLayout::AllocatableMemoryInCodePage() {
   size_t memory = ObjectEndOffsetInCodePage() - ObjectStartOffsetInCodePage();
   DCHECK_LE(kMaxRegularHeapObjectSize, memory);
@@ -1113,7 +1113,7 @@ intptr_t MemoryAllocator::GetCommitPageSize() {
   }
 }
 ```
-```c++
+```cpp
 size_t OS::CommitPageSize() {
 #if defined(__APPLE__) && V8_TARGET_ARCH_ARM64
   static size_t page_size = kAppleArmPageSize;
@@ -1124,11 +1124,11 @@ size_t OS::CommitPageSize() {
 }
 ```
 MemoryChunk::kPageSize:
-```c++
+```cpp
 // Page size in bytes.  This must be a multiple of the OS page size.
   static const int kPageSize = 1 << kPageSizeBits;
 ```
-```c++
+```cpp
 // Number of bits to represent the page size for paged spaces.
 #if defined(V8_TARGET_ARCH_PPC) || defined(V8_TARGET_ARCH_PPC64)
 // PPC has large (64KB) physical pages.
@@ -1147,7 +1147,7 @@ On my machine area_size_ is 236Kb
 
 
 CodeSpace extends PagedSpace:
-```c++
+```cpp
 class CodeSpace : public PagedSpace {
  public:
   // Creates an old space object. The constructor does not allocate pages
@@ -1160,7 +1160,7 @@ class CodeSpace : public PagedSpace {
 I think that it is possible for the OS to be configured with 4Kb pages or
 64Kb pages.
 
-```c++
+```cpp
   bool large_object = size_in_bytes > kMaxRegularHeapObjectSize;
   ...
   } else if (AllocationType::kCode == type) {
@@ -1188,7 +1188,7 @@ which will cause it to be created in the CodeLargeObjectSpace. And later the
 
 This solution is to add a check when createing the bool large_object to take
 into consideration the area_size.
-```c++
+```cpp
   size_t large_object_threshold = kMaxRegularHeapObjectSize;
   if (AllocationType::kCode == type)
     large_object_threshold = std::min(kMaxRegularHeapObjectSize,
@@ -1200,7 +1200,7 @@ This code will take the min value of the kMaxRegularHeapObjectSize and the code_
 area_size and use use that value to determine if the size of the requested object
 should be considered a large object or not.
 
-```c++
+```cpp
 size_t area_size() const {
     return static_cast<size_t>(area_end() - area_start());
   }

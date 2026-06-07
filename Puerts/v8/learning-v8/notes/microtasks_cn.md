@@ -24,7 +24,7 @@ TIMER 3924762: 1 list empty
 在 [microtask_test](../test/microtask_test.cc) 中有一个运行 microtask 的示例。
 
 Isolate 类暴露了许多与入队和运行 microtasks 相关的函数：
-```c++
+```cpp
 class V8_EXPORT Isolate {                                                       
  public:     
  ...
@@ -44,7 +44,7 @@ $ lldb -- ./test/microtask_test
 ```
 `Isolate::EnqueueMicrotask` 可以在 `src/api/api.cc` 中找到。
 实际的调用最终会进入 `microtask-queue.cc`，位于 `src/execution/microtask-queue.cc`：
-```c++
+```cpp
 void MicrotaskQueue::EnqueueMicrotask(v8::Isolate* v8_isolate,
                                       v8::Local<Function> function) {
   Isolate* isolate = reinterpret_cast<Isolate*>(v8_isolate);

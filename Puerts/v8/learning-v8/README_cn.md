@@ -161,34 +161,34 @@ inline bool ToLocal(v8::internal::MaybeHandle<v8::internal::Object> maybe,
 }
 ```
 现在让我们看看 `Execution::Call`，它位于 `execution/execution.cc` 中，并调用了：
-```c++
+```cpp
 return Invoke(isolate, InvokeParams::SetUpForCall(isolate, callable, receiver, argc, argv));
 ```
 `SetUpForCall` 将返回一个 `InvokeParams`。
 TODO：仔细查看 InvokeParams。
-```c++
+```cpp
 V8_WARN_UNUSED_RESULT MaybeHandle<Object> Invoke(Isolate* isolate,              
                                                  const InvokeParams& params) {
 ```
-```c++
+```cpp
 Handle<Object> receiver = params.is_construct                             
                                     ? isolate->factory()->the_hole_value()         
                                     : params.receiver; 
 ```
 在我们的例子中，`is_construct` 为 false，因为我们没有使用 `new`，并且 receiver（函数中的 `this`）应该设置为我们传入的 receiver。之后我们有 `Builtins::InvokeApiFunction`：
-```c++
+```cpp
 auto value = Builtins::InvokeApiFunction(                                 
           isolate, params.is_construct, function, receiver, params.argc,        
           params.argv, Handle<HeapObject>::cast(params.new_target)); 
 ```
 
-```c++
+```cpp
 result = HandleApiCallHelper<false>(isolate, function, new_target,        
                                     fun_data, receiver, arguments);
 ```
 
 `api-arguments-inl.h` 中有：
-```c++
+```cpp
 FunctionCallbackArguments::Call(CallHandlerInfo handler) {
   ...
   ExternalCallbackScope call_scope(isolate, FUNCTION_ADDR(f));                  
@@ -200,13 +200,13 @@ FunctionCallbackArguments::Call(CallHandlerInfo handler) {
 对 `f(info)` 的调用就是触发回调的地方，这只是一个普通的函数调用。
 
 回到 `HandleApiCallHelper`：
-```c++
+```cpp
 Handle<Object> result = custom.Call(call_data);                             
                                                                                 
 RETURN_EXCEPTION_IF_SCHEDULED_EXCEPTION(isolate, Object);
 ```
 `RETURN_EXCEPTION_IF_SCHEDULED_EXCEPTION` 展开为：
-```c++
+```cpp
 Handle<Object> result = custom.Call(call_data);                             
 do { 
   Isolate* __isolate__ = (isolate); 
@@ -219,7 +219,7 @@ do {
 ```
 注意，如果发生异常，将返回一个空对象。
 稍后在 `execution.cc` 的 `Invoke` 中：
-```c++
+```cpp
   auto value = Builtins::InvokeApiFunction(                                 
           isolate, params.is_construct, function, receiver, params.argc,        
           params.argv, Handle<HeapObject>::cast(params.new_target));            
@@ -239,25 +239,25 @@ do {
 ### Address
 `Address` 可以在 `include/v8-internal.h` 中找到：
 
-```c++
+```cpp
 typedef uintptr_t Address;
 ```
 `uintptr_t` 是 `cstdint` 中指定的可选类型，能够存储数据指针。它是一个无符号整数类型，任何有效的 `void` 指针都可以转换为该类型（并转换回来）。
 
 ### TaggedImpl
 该类在 `src/objects/tagged-impl.h` 中声明，并有一个私有成员，声明如下：
-```c++
+```cpp
  public
   constexpr StorageType ptr() const { return ptr_; }
  private:
   StorageType ptr_;
 ```
 可以使用以下方式创建实例：
-```c++
+```cpp
   i::TaggedImpl<i::HeapObjectReferenceType::STRONG, i::Address>  tagged{};
 ```
 存储类型也可以是 `Tagged_t`，它定义在 `globals.h` 中：
-```c++
+```cpp
  using Tagged_t = uint32_t;
 ```
 在使用指针压缩（Pointer Compression）时，它似乎可以是一个不同的值。
@@ -266,7 +266,7 @@ typedef uintptr_t Address;
 
 ### Object
 该类继承自 TaggedImpl：
-```c++
+```cpp
 class Object : public TaggedImpl<HeapObjectReferenceType::STRONG, Address> {       
 ```
 可以使用默认构造函数创建 Object，或者通过传入一个 Address（这将委托给 TaggedImpl 构造函数）。
@@ -290,7 +290,7 @@ Object 本身没有任何成员（除了从 TaggedImpl 继承的 `ptr_`）。
 参见 [object_test.cc](./test/object_test.cc) 中的示例。
 
 ### ObjectSlot
-```c++
+```cpp
   i::Object obj{18};
   i::FullObjectSlot slot{&obj};
 ```
@@ -306,7 +306,7 @@ Object 本身没有任何成员（除了从 TaggedImpl 继承的 `ptr_`）。
 
 ### Maybe
 Maybe 类似于 Optional，它可以持有一个值或为空。
-```c++
+```cpp
 template <class T>                                                              
 class Maybe {
  public:
@@ -320,7 +320,7 @@ class Maybe {
 }
 ```
 我起初认为 `Just` 这个名字有点令人困惑，但如果你这样读：
-```c++
+```cpp
   bool cond = true;
   Maybe<int> maybe = cond ? Just<int>(10) : Nothing<int>();
 ```
@@ -331,7 +331,7 @@ Maybe 的用法在于 API 调用可能会失败，返回 Nothing 是一种信号
 参见 [maybe_test.cc](./test/maybe_test.cc) 中的示例。
 
 ### MaybeLocal
-```c++
+```cpp
 template <class T>                                                              
 class MaybeLocal {
  public:                                                                        
@@ -353,7 +353,7 @@ class MaybeLocal {
 
 ### Data
 是 V8 堆中可以存在的所有对象的父类：
-```c++
+```cpp
 class V8_EXPORT Data {                                                          
  private:                                                                       
   Data();                                                                       
@@ -362,8 +362,8 @@ class V8_EXPORT Data {
 
 ### Value
 Value 继承自 `Data`，并添加了许多检查 Value 是否为特定类型的方法，如 `IsUndefined()`、`IsNull`、`IsNumber` 等。
-它还有一些有用的方法可以转换为 Local<T>，例如：
-```c++
+它还有一些有用的方法可以转换为 `Local<T>`，例如：
+```cpp
 V8_WARN_UNUSED_RESULT MaybeLocal<Number> ToNumber(Local<Context> context) const;
 V8_WARN_UNUSED_RESULT MaybeLocal<String> ToNumber(Local<String> context) const;
 ...
@@ -376,7 +376,7 @@ Handle 与 Object 和 ObjectSlot 类似，它也包含一个 Address 成员（�
 ### HandleScope
 HandleScope 是一个栈分配的对象，它管理 Local 句柄。当一个 HandleScope 被销毁时，所有在其中创建的 Local 句柄都会被释放。
 
-```c++
+```cpp
 class V8_EXPORT HandleScope {
  public:
   explicit HandleScope(Isolate* isolate);
@@ -388,7 +388,7 @@ class V8_EXPORT HandleScope {
   internal::Address* prev_limit_;
 ```
 在 `src/api/api.cc` 中：
-```c++
+```cpp
 HandleScope::HandleScope(Isolate* v8_isolate) {
   i::Isolate* isolate = reinterpret_cast<i::Isolate*>(v8_isolate);
   isolate_ = isolate;
@@ -399,7 +399,7 @@ HandleScope::HandleScope(Isolate* v8_isolate) {
 }
 ```
 `HandleScopeData` 是一个简单的结构体：
-```c++
+```cpp
 struct HandleScopeData {
   Address* next;
   Address* limit;
@@ -416,14 +416,14 @@ struct HandleScopeData {
 ```
 注意有两个指针（Address*）指向 next 和 limit。当 HandleScope 初始化时，当前的 `handle_scope_data` 将从内部 Isolate 中检索。正在创建的 HandleScope 实例存储当前 Isolate 的 next/limit 指针，以便在关闭此 HandleScope 时恢复它们（参见 `CloseScope`）。
 
-那么，创建了 HandleScope 后，Local<T> 如何与此实例交互？
+那么，创建了 HandleScope 后，`Local<T>` 如何与此实例交互？
 
-当创建一个 Local<T> 时，它可能会经过 `FactoryBase::NewStruct`，该函数将分配一个新的 Map，然后为正在创建的 InstanceType 创建一个 Handle：
-```c++
+当创建一个`Local<T>` 时，它可能会经过 `FactoryBase::NewStruct`，该函数将分配一个新的 Map，然后为正在创建的 InstanceType 创建一个 Handle：
+```cpp
 Handle<Struct> str = handle(Struct::cast(result), isolate()); 
 ```
 这将进入 `src/handles/handles-inl.h` 中的 `Handle<T>` 构造函数：
-```c++
+```cpp
 template <typename T>                                                           
 Handle<T>::Handle(T object, Isolate* isolate): HandleBase(object.ptr(), isolate) {}
 
@@ -433,7 +433,7 @@ HandleBase::HandleBase(Address object, Isolate* isolate)
 注意使用 `object.ptr()` 将 Address 传递给 HandleBase。
 还要注意 HandleBase 将其 `location_` 设置为 `HandleScope::GetHandle` 的结果。
 
-```c++
+```cpp
 Address* HandleScope::GetHandle(Isolate* isolate, Address value) {              
   DCHECK(AllowHandleAllocation::IsAllowed());                                   
   HandleScopeData* data = isolate->handle_scope_data();                         
@@ -442,7 +442,7 @@ Address* HandleScope::GetHandle(Isolate* isolate, Address value) {
 }
 ```
 在这种情况下将调用 `CreateHandle`，该函数将检索当前 Isolate 的 `handle_scope_data`：
-```c++
+```cpp
   HandleScopeData* data = isolate->handle_scope_data();                         
   Address* result = data->next;                                                 
   if (result == data->limit) {                                                  
@@ -451,13 +451,13 @@ Address* HandleScope::GetHandle(Isolate* isolate, Address value) {
 ```
 在这种情况下，next 和 limit 都将是 0x0，因此将调用 `Extend`。
 `Extend` 也会获取 Isolate 的 `handle_scope_data` 并检查当前级别，之后获取 Isolate 的 `HandleScopeImplementer`：
-```c++
+```cpp
   HandleScopeImplementer* impl = isolate->handle_scope_implementer();           
 ```
 `HandleScopeImplementer` 在 `src/api/api.h` 中声明。
 
 `HandleScope::CreateHandle` 将从 Isolate 获取 `handle_scope_data`：
-```c++
+```cpp
 Address* HandleScope::CreateHandle(Isolate* isolate, Address value) {
   HandleScopeData* data = isolate->handle_scope_data();
   if (result == data->limit) {
@@ -477,7 +477,7 @@ HandleScope 的析构函数将调用 `CloseScope`。
 ### EscapableHandleScope
 Local 句柄位于栈上，并在调用相应的析构函数时被删除。如果存在局部的 HandleScope，那么它将在作用域返回时处理此问题。当句柄不再有引用时，它可以被垃圾回收。这意味着如果一个函数有一个 HandleScope 并希望返回一个 handle/local，那么在函数返回后它将不可用。这就是 EscapableHandleScope 的用途，它允许将值放置在封闭的句柄作用域中以使其存活。当封闭的 HandleScope 超出作用域时，它将被清理。
 
-```c++
+```cpp
 class V8_EXPORT EscapableHandleScope : public HandleScope {                        
  public:                                                                           
   explicit EscapableHandleScope(Isolate* isolate);
@@ -500,7 +500,7 @@ class V8_EXPORT EscapableHandleScope : public HandleScope {
 ```
 
 来自 `api.cc`：
-```c++
+```cpp
 EscapableHandleScope::EscapableHandleScope(Isolate* v8_isolate) {
   i::Isolate* isolate = reinterpret_cast<i::Isolate*>(v8_isolate);
   escape_slot_ = CreateHandle(isolate, i::ReadOnlyRoots(isolate).the_hole_value().ptr());
@@ -509,13 +509,13 @@ EscapableHandleScope::EscapableHandleScope(Isolate* v8_isolate) {
 ```
 因此，当创建一个 EscapableHandleScope 时，它将使用 hole value 创建一个句柄，并将其存储在类型为 Address 的 `escape_slot_` 中。这个 Handle 将在当前的 HandleScope 中创建，EscapableHandleScope 稍后可以为该指针/地址设置它想要逃逸（escape）的值。稍后当该 HandleScope 超出作用域时，它将被清理。然后它像普通的 HandleScope 一样调用 `Initialize`。
 
-```c++
+```cpp
 i::Address* HandleScope::CreateHandle(i::Isolate* isolate, i::Address value) {
   return i::HandleScope::CreateHandle(isolate, value);
 }
 ```
 来自 `handles-inl.h`：
-```c++
+```cpp
 Address* HandleScope::CreateHandle(Isolate* isolate, Address value) {
   DCHECK(AllowHandleAllocation::IsAllowed());
   HandleScopeData* data = isolate->handle_scope_data();
@@ -534,7 +534,7 @@ Address* HandleScope::CreateHandle(Isolate* isolate, Address value) {
 ```
 
 当调用 `Escape` 时，会发生以下情况（`v8.h`）：
-```c++
+```cpp
 template <class T>
   V8_INLINE Local<T> Escape(Local<T> value) {
     internal::Address* slot = Escape(reinterpret_cast<internal::Address*>(*value));
@@ -542,7 +542,7 @@ template <class T>
   }
 ```
 以及 `EscapableHandleScope::Escape`（`api.cc`）：
-```c++
+```cpp
 i::Address* EscapableHandleScope::Escape(i::Address* escape_value) {
   i::Heap* heap = reinterpret_cast<i::Isolate*>(GetIsolate())->heap();
   Utils::ApiCheck(i::Object(*escape_slot_).IsTheHole(heap->isolate()),
@@ -565,7 +565,7 @@ TODO:
 
 ### Local
 只有一个成员 `val_`，其类型为指向 `T` 的指针：
-```c++
+```cpp
 template <class T> class Local { 
 ...
  private:
@@ -573,19 +573,19 @@ template <class T> class Local {
 }
 ```
 注意这是一个指向 T 的指针。我们可以使用以下方式创建一个 local：
-```c++
+```cpp
   v8::Local<v8::Value> empty_value;
 ```
 
 因此，Local 包含一个指向类型 T 的指针。我们可以使用 `operator->` 和 `operator*` 访问此指针。
 
 我们可以使用 `Local::Cast` 从子类型转换为父类型：
-```c++
+```cpp
 v8::Local<v8::Number> nr = v8::Local<v8::Number>(v8::Number::New(isolate_, 12));
 v8::Local<v8::Value> val = v8::Local<v8::Value>::Cast(nr);
 ```
 还有：
-```c++
+```cpp
 v8::Local<v8::Value> val2 = nr.As<v8::Value>();
 ```
 
@@ -599,17 +599,17 @@ $ nm -C libv8_monolith.a | grep Print_Object
 ```
 注意此函数没有命名空间。
 我们可以这样使用它：
-```c++
+```cpp
 extern void _v8_internal_Print_Object(void* object);
 
 _v8_internal_Print_Object(*((v8::internal::Object**)(*global)));
 ```
 让我们仔细看看上面的代码：
-```c++
+```cpp
   v8::internal::Object** gl = ((v8::internal::Object**)(*global));
 ```
 我们使用解引用运算符获取 Local 的值（`*global`），它只是 `T*` 类型，即指向 Local 类型的指针：
-```c++
+```cpp
 template <class T>
 class Local {
   ...
@@ -628,7 +628,7 @@ class Local {
 `v8::internal::Object` 实例只有一个数据成员，即名为 `ptr_` 的 `Address` 类型字段：
 
 `src/objects/objects.h`：
-```c++
+```cpp
 class Object : public TaggedImpl<HeapObjectReferenceType::STRONG, Address> {
  public:
   constexpr Object() : TaggedImpl(kNullAddress) {}
@@ -646,7 +646,7 @@ class Object : public TaggedImpl<HeapObjectReferenceType::STRONG, Address> {
 }
 ```
 让我们看看其中一个函数是如何实现的。例如，在 `OBJECT_TYPE_LIST` 中我们有：
-```c++
+```cpp
 #define OBJECT_TYPE_LIST(V) \
   V(LayoutDescriptor)       \
   V(Primitive)              \
@@ -654,18 +654,18 @@ class Object : public TaggedImpl<HeapObjectReferenceType::STRONG, Address> {
   V(Numeric)
 ```
 因此，Object 类将有一个类似于以下的函数：
-```c++
+```cpp
 inline bool IsNumber() const;
 inline bool IsNumber(const Isolate* isolate) const;
 ```
 在 `src/objects/objects-inl.h` 中我们将有实现：
-```c++
+```cpp
 bool Object::IsNumber() const {
   return IsHeapObject() && HeapObject::cast(*this).IsNumber();
 }
 ```
 `IsHeapObject` 定义在 TaggedImpl 中：
-```c++
+```cpp
   constexpr inline bool IsHeapObject() const { return IsStrong(); }
 
   constexpr inline bool IsStrong() const {
@@ -677,7 +677,7 @@ bool Object::IsNumber() const {
 ```
 
 宏可以在 `src/common/globals.h` 中找到：
-```c++
+```cpp
 #define HAS_STRONG_HEAP_OBJECT_TAG(value)                          \
   (((static_cast<i::Tagged_t>(value) & ::i::kHeapObjectTagMask) == \
     ::i::kHeapObjectTag))
@@ -688,7 +688,7 @@ using Tagged_t = Address;
 ```
 
 `src/objects/tagged-impl.h`：
-```c++
+```cpp
 template <HeapObjectReferenceType kRefType, typename StorageType>
 class TaggedImpl {
 
@@ -698,18 +698,18 @@ class TaggedImpl {
 `HeapObjectReferenceType` 可以是 WEAK 或 STRONG。在这种情况下，存储类型是 `Address`。因此，Object 本身只有一个从其唯一的父类继承的成员，即 `ptr_`。
 
 因此，以下代码是告诉编译器将我们的 Local 的值 `*global` 视为一个指针（它已经是一个指针），指向一个指向符合 `v8::internal::Object` 类型布局的内存位置的指针，我们现在知道该类型有一个 `ptr_` 成员。我们想要解引用它并将其传递给函数。
-```c++
+```cpp
 _v8_internal_Print_Object(*((v8::internal::Object**)(*global)));
 ```
 
 ### ObjectTemplate
 但我仍然缺少 ObjectTemplate 和 Object 之间的联系。
 当我们创建它时，我们使用：
-```c++
+```cpp
 Local<ObjectTemplate> global = ObjectTemplate::New(isolate);
 ```
 在 `src/api/api.cc` 中我们有：
-```c++
+```cpp
 static Local<ObjectTemplate> ObjectTemplateNew(
     i::Isolate* isolate, v8::Local<FunctionTemplate> constructor,
     bool do_not_cache) {
@@ -726,7 +726,7 @@ static Local<ObjectTemplate> ObjectTemplateNew(
 ```
 在这种情况下，`Struct` 是什么？
 `src/objects/struct.h`
-```c++
+```cpp
 #include "torque-generated/class-definitions-tq.h"
 
 class Struct : public TorqueGeneratedStruct<Struct, HeapObject> {
@@ -737,7 +737,7 @@ class Struct : public TorqueGeneratedStruct<Struct, HeapObject> {
 ```
 注意 include 指定了 `torque-generated` 的头文件，可以在 `out/x64.release_gcc/gen/torque-generated/class-definitions-tq` 中找到。因此，在某个地方一定有对 `torque` 可执行文件的调用，它在编译主源文件之前生成 Code Stub Assembler 的 C++ 头文件和源文件。在 `Building V8` 章节中有一节关于此内容。
 宏 `TQ_OBJECT_CONSTRUCTORS` 可以在 `src/objects/object-macros.h` 中找到，并展开为：
-```c++
+```cpp
   constexpr Struct() = default;
 
  protected:
@@ -766,17 +766,17 @@ extern class Struct extends HeapObject {
 这看起来像是一种领域特定语言（DSL），用于定义 V8 中的对象布局。
 
 ### 线程池大小
-```c++
+```cpp
 V8::SetThreadPoolSize(7);
 ```
 在 `src/api/api.cc` 中：
-```c++
+```cpp
 void V8::SetThreadPoolSize(int thread_pool_size) {
   i::V8::set_thread_pool_size(thread_pool_size);
 }
 ```
 在 `src/init/v8.cc` 中：
-```c++
+```cpp
 void V8::set_thread_pool_size(int thread_pool_size) {
   if (thread_pool_size > 0) {
     thread_pool_size_ = std::min(thread_pool_size, kMaxThreadPoolSize);
@@ -784,24 +784,24 @@ void V8::set_thread_pool_size(int thread_pool_size) {
 }
 ```
 `kMaxThreadPoolSize` 定义在 `src/init/v8.h` 中：
-```c++
+```cpp
 static const int kMaxThreadPoolSize = 16;
 ```
 因此，线程池大小被限制在 1 到 16 之间。
 
 ### 平台初始化
-```c++
+```cpp
 v8::Platform* platform = v8::platform::NewDefaultPlatform().release();
 v8::V8::InitializePlatform(platform);
 ```
 在 `src/api/api.cc` 中：
-```c++
+```cpp
 void V8::InitializePlatform(Platform* platform) {
   i::V8::InitializePlatform(platform);
 }
 ```
 在 `src/init/v8.cc` 中：
-```c++
+```cpp
 void V8::InitializePlatform(v8::Platform* platform) {
   CHECK_NULL(platform_);
   platform_ = platform;
@@ -810,18 +810,18 @@ void V8::InitializePlatform(v8::Platform* platform) {
 `platform_` 是 `i::V8` 类的静态成员。
 
 ### V8 初始化
-```c++
+```cpp
 v8::V8::Initialize();
 ```
 在 `src/api/api.cc` 中：
-```c++
+```cpp
 bool V8::Initialize() {
   i::V8::Initialize();
   return true;
 }
 ```
 在 `src/init/v8.cc` 中：
-```c++
+```cpp
 void V8::Initialize() {
   if (is_initialized_) return;
   is_initialized_ = true;
@@ -831,30 +831,30 @@ void V8::Initialize() {
 `is_initialized_` 也是 `i::V8` 类的静态成员。
 
 ### ICU 初始化
-```c++
+```cpp
 v8::V8::InitializeICU();
 ```
 ICU 代表 International Components for Unicode。它用于国际化支持。
 
 ### 外部启动数据
-```c++
+```cpp
 v8::V8::InitializeExternalStartupData(argv[0]);
 ```
 这用于加载快照文件（snapshot files）。快照用于通过预先反序列化堆的状态来加速 V8 的启动。
 
 ### 线程池大小（续）
-```c++
+```cpp
 (int) thread_pool_size = 7
 ```
 这就是 `SetThreadPoolSize` 所做的一切。在此之后我们有：
-```c++
+```cpp
     platform->EnsureInitialized();
 
     for (int i = 0; i < thread_pool_size_; ++i)
       thread_pool_.push_back(new WorkerThread(&queue_));
 ```
 `new WorkerThread` 将创建一个新的 pthread（在我的系统上，即 MacOSX）：
-```c++
+```cpp
     result = pthread_create(&data_->thread_, &attr, ThreadEntry, this);
 ```
 `ThreadEntry` 可以在 `src/base/platform/platform-posix` 中找到。
@@ -864,12 +864,12 @@ International Components for Unicode (ICU) 处理国际化（i18n）。
 ICU 提供对本地化敏感的字符串比较、日期/时间/数字/货币格式化等支持。
 
 有一个名为 ECMAScript 402 的可选 API，V8 支持它且默认启用。[i18n-support](https://github.com/v8/v8/wiki/i18n-support) 指出，即使你的应用程序不使用 ICU，你仍然需要调用 `InitializeICU`：
-```c++
+```cpp
     V8::InitializeICU();
 ```
 
 ### Local
-```c++
+```cpp
 Local<String> script_name = ...;
 ```
 那么 `script_name` 是什么？它是一个由 V8 GC 管理的对象引用。
@@ -879,7 +879,7 @@ GC 需要能够移动对象（移动指针）并跟踪对象是否应该被回�
 这使用了资源获取即初始化（RAII）模式，因此当 HandleScope 实例超出作用域时，它将移除所有的 Local 实例。
 
 `Local` 类（在 `include/v8.h` 中）只有一个成员，其类型为指向类型 `T` 的指针。对于上述示例，它将是：
-```c++
+```cpp
   String* val_;
 ```
 你可以在 `include/v8.h` 中找到 Local 的可用操作。
@@ -889,7 +889,7 @@ GC 需要能够移动对象（移动指针）并跟踪对象是否应该被回�
 (bool) $12 = false
 ```
 
-Local<T> 重载了许多运算符，例如 `->`：
+`Local<T>` 重载了许多运算符，例如 `->`：
 ```shell
 (lldb) p script_name->Length()
 (int) $14 = 7
@@ -913,12 +913,12 @@ https://v8.dev/docs/embed:
 $ make test/persistent-object_test
 $ ./test/persistent-object_test --gtest_filter=PersistentTest.value
 ```
-现在，要创建一个 Persistent 实例，我们需要一个 Local<T> 实例，否则 Persistent 实例将为空。
-```c++
+现在，要创建一个 Persistent 实例，我们需要一个`Local<T>`实例，否则 Persistent 实例将为空。
+```cpp
 Local<Object> o = Local<Object>::New(isolate_, Object::New(isolate_));
 ```
 `Local<Object>::New` 可以在 `src/api/api.cc` 中找到：
-```c++
+```cpp
 Local<v8::Object> v8::Object::New(Isolate* isolate) {
   i::Isolate* i_isolate = reinterpret_cast<i::Isolate*>(isolate);
   LOG_API(i_isolate, Object, New);
@@ -930,20 +930,20 @@ Local<v8::Object> v8::Object::New(Isolate* isolate) {
 ```
 首先发生的是将公共的 Isolate 指针转换为指向内部 `Isolate` 类型的指针。
 `LOG_API` 是同一源文件（`src/api/api.cc`）中的一个宏：
-```c++
+```cpp
 #define LOG_API(isolate, class_name, function_name)                           \
   i::RuntimeCallTimerScope _runtime_timer(                                    \
       isolate, i::RuntimeCallCounterId::kAPI_##class_name##_##function_name); \
   LOG(isolate, ApiEntryCall("v8::" #class_name "::" #function_name))
 ```
 在我们的例子中，预处理器会将其展开为：
-```c++
+```cpp
   i::RuntimeCallTimerScope _runtime_timer(
       isolate, i::RuntimeCallCounterId::kAPI_Object_New);
   LOG(isolate, ApiEntryCall("v8::Object::New))
 ```
 `LOG` 是一个可以在 `src/log.h` 中找到的宏：
-```c++
+```cpp
 #define LOG(isolate, Call)                              \
   do {                                                  \
     v8::internal::Logger* logger = (isolate)->logger(); \
@@ -951,12 +951,12 @@ Local<v8::Object> v8::Object::New(Isolate* isolate) {
   } while (false)
 ```
 这将展开为：
-```c++
+```cpp
   v8::internal::Logger* logger = isolate->logger();
   if (logger->is_logging()) logger->ApiEntryCall("v8::Object::New");
 ```
 展开 LOG_API 宏后，我们得到：
-```c++
+```cpp
 Local<v8::Object> v8::Object::New(Isolate* isolate) {
   i::Isolate* i_isolate = reinterpret_cast<i::Isolate*>(isolate);
   i::RuntimeCallTimerScope _runtime_timer( isolate, i::RuntimeCallCounterId::kAPI_Object_New);
@@ -970,14 +970,14 @@ Local<v8::Object> v8::Object::New(Isolate* isolate) {
 }
 ```
 接下来是 `ENTER_V8_NO_SCRIPT_NO_EXCEPTION`：
-```c++
+```cpp
 #define ENTER_V8_NO_SCRIPT_NO_EXCEPTION(isolate)                    \
   i::VMState<v8::OTHER> __state__((isolate));                       \
   i::DisallowJavascriptExecutionDebugOnly __no_script__((isolate)); \
   i::DisallowExceptions __no_exceptions__((isolate))
 ```
 展开宏后：
-```c++
+```cpp
 Local<v8::Object> v8::Object::New(Isolate* isolate) {
   i::Isolate* i_isolate = reinterpret_cast<i::Isolate*>(isolate);
   i::RuntimeCallTimerScope _runtime_timer( isolate, i::RuntimeCallCounterId::kAPI_Object_New);
@@ -997,7 +997,7 @@ Local<v8::Object> v8::Object::New(Isolate* isolate) {
 TODO：仔细查看 `VMState`。
 
 首先，调用 `i_isolate->object_function()` 并将结果传递给 `NewJSObject`。`object_function` 是由名为 `NATIVE_CONTEXT_FIELDS` 的宏生成的：
-```c++
+```cpp
 #define NATIVE_CONTEXT_FIELD_ACCESSOR(index, type, name)     \
   Handle<type> Isolate::name() {                             \
     return Handle<type>(raw_native_context()->name(), this); \
@@ -1008,13 +1008,13 @@ TODO：仔细查看 `VMState`。
 NATIVE_CONTEXT_FIELDS(NATIVE_CONTEXT_FIELD_ACCESSOR)
 ```
 `NATIVE_CONTEXT_FIELDS` 是 `src/contexts` 中的一个宏：
-```c++
+```cpp
 #define NATIVE_CONTEXT_FIELDS(V)                                               \
 ...                                                                            \
   V(OBJECT_FUNCTION_INDEX, JSFunction, object_function)                        \
 ```
 
-```c++
+```cpp
   Handle<type> Isolate::object_function() {
     return Handle<JSFunction>(raw_native_context()->object_function(), this);
   }
@@ -1025,7 +1025,7 @@ NATIVE_CONTEXT_FIELDS(NATIVE_CONTEXT_FIELD_ACCESSOR)
 ```
 我不清楚不同类型的 Context，有 Native Context，还有“普通/公共”Context。
 在 `src/contexts-inl.h` 中，我们有 `native_context` 函数：
-```c++
+```cpp
 Context* Context::native_context() const {
   Object* result = get(NATIVE_CONTEXT_INDEX);
   DCHECK(IsBootstrappingOrNativeContext(this->GetIsolate(), result));
@@ -1035,7 +1035,7 @@ Context* Context::native_context() const {
 `Context` 继承自 `FixedArray`，因此 `get` 函数是 `FixedArray` 的 `get` 函数，而 `NATIVE_CONTEXT_INDEX` 是数组中存储 Native Context 的索引。
 
 现在，让我们仔细看看 `NewJSObject`。如果你在 `src/heap/factory.cc` 中搜索 `NewJSObject`：
-```c++
+```cpp
 Handle<JSObject> Factory::NewJSObject(Handle<JSFunction> constructor, PretenureFlag pretenure) {
   JSFunction::EnsureHasInitialMap(constructor);
   Handle<Map> map(constructor->initial_map(), isolate());
@@ -1043,7 +1043,7 @@ Handle<JSObject> Factory::NewJSObject(Handle<JSFunction> constructor, PretenureF
 }
 ```
 `NewJSObjectFromMap`：
-```c++
+```cpp
 ...
   HeapObject* obj = AllocateRawWithAllocationSite(map, pretenure, allocation_site);
 ```
@@ -1057,7 +1057,7 @@ HeapObject 包含一个指向 Map 的指针，或者更确切地说，有一个�
 (lldb) br s -f map_test.cc -l 63
 ```
 
-```c++
+```cpp
 Handle<Map> Factory::NewMap(InstanceType type,
                             int instance_size,
                             ElementsKind elements_kind,
@@ -1070,7 +1070,7 @@ Handle<Map> Factory::NewMap(InstanceType type,
 }
 ```
 我们可以看到上面调用了堆实例上的 `AllocateRawWithRetryOrFail`，传入大小 `88` 并指定 `MAP_SPACE`：
-```c++
+```cpp
 HeapObject* Heap::AllocateRawWithRetryOrFail(int size, AllocationSpace space,
                                              AllocationAlignment alignment) {
   AllocationResult alloc;
@@ -1094,11 +1094,11 @@ HeapObject* Heap::AllocateRawWithRetryOrFail(int size, AllocationSpace space,
 ```
 `alignment` 的默认值是 `kWordAligned`。阅读头文件中的文档，它说该函数将尝试在 `MAP_SPACE` 中执行大小为 `88` 的分配，如果失败，将执行完整的 GC 并重试分配。
 让我们看看 `AllocateRawWithLigthRetry`：
-```c++
+```cpp
   AllocationResult alloc = AllocateRaw(size, space, alignment);
 ```
 `AllocateRaw` 可以在 `src/heap/heap-inl.h` 中找到。根据 `space` 参数，会采取不同的路径。由于在我们的例子中是 `MAP_SPACE`，我们将关注该路径：
-```c++
+```cpp
 AllocationResult Heap::AllocateRaw(int size_in_bytes, AllocationSpace space, AllocationAlignment alignment) {
   ...
   HeapObject* object = nullptr;
@@ -1112,11 +1112,11 @@ AllocationResult Heap::AllocateRaw(int size_in_bytes, AllocationSpace space, All
 }
 ```
 `map_space_` 是 Heap 的私有成员（`src/heap/heap.h`）：
-```c++
+```cpp
 MapSpace* map_space_;
 ```
 `AllocateRawUnaligned` 可以在 `src/heap/spaces-inl.h` 中找到：
-```c++
+```cpp
 AllocationResult PagedSpace::AllocateRawUnaligned( int size_in_bytes, UpdateSkipList update_skip_list) {
   if (!EnsureLinearAllocationArea(size_in_bytes)) {
     return AllocationResult::Retry(identity());
@@ -1129,7 +1129,7 @@ AllocationResult PagedSpace::AllocateRawUnaligned( int size_in_bytes, UpdateSkip
 ```
 `update_skip_list` 的默认值是 `UPDATE_SKIP_LIST`。
 让我们看看 `AllocateLinearly`：
-```c++
+```cpp
 HeapObject* PagedSpace::AllocateLinearly(int size_in_bytes) {
   Address current_top = allocation_info_.top();
   Address new_top = current_top + size_in_bytes;
@@ -1150,13 +1150,13 @@ HeapObject* PagedSpace::AllocateLinearly(int size_in_bytes) {
 我一直在想为什么 Map（和其他 HeapObject）没有任何成员字段，而只有/主要是各种组成对象的字段的 getter/setter。答案是，指向例如 Map 实例的指针指向实例的第一个内存位置。而 getter/setter 函数使用索引来读写内存位置。索引主要以枚举字段的形式存在，定义了类型的内存布局。
 
 接下来，在 `AllocateRawUnaligned` 中我们有 `MSAN_ALLOCATED_UNINITIALIZED_MEMORY` 宏：
-```c++
+```cpp
   MSAN_ALLOCATED_UNINITIALIZED_MEMORY(object->address(), size_in_bytes);
 ```
 `MSAN_ALLOCATED_UNINITIALIZED_MEMORY` 可以在 `src/msan.h` 中找到，`ms` 代表 `Memory Sanitizer`，仅在定义了 `V8_US_MEMORY_SANITIZER` 时使用。
 返回的 `object` 在返回时将用于构造 `AllocationResult`。
 回到 `AllocateRaw`：
-```c++
+```cpp
 if (allocation.To(&object)) {
     ...
     OnAllocationEvent(object, size_in_bytes);
@@ -1165,7 +1165,7 @@ if (allocation.To(&object)) {
   return allocation;
 ```
 这将使我们返回到 `AllocateRawWithLightRetry`：
-```c++
+```cpp
 AllocationResult alloc = AllocateRaw(size, space, alignment);
 if (alloc.To(&result)) {
   DCHECK(result != exception());
@@ -1173,27 +1173,27 @@ if (alloc.To(&result)) {
 }
 ```
 这将使我们返回到 `AllocateRawWithRetryOrFail`：
-```c++
+```cpp
   HeapObject* result = AllocateRawWithLigthRetry(size, space, alignment);
   if (result) return result;
 ```
 该返回将返回到 `src/heap/factory.cc` 中的 `NewMap`：
-```c++
+```cpp
   result->set_map_after_allocation(*meta_map(), SKIP_WRITE_BARRIER);
   return handle(InitializeMap(Map::cast(result), type, instance_size,
                               elements_kind, inobject_properties),
                 isolate());
 ```
 `InitializeMap`：
-```c++
+```cpp
   map->set_instance_type(type);
 ```
 接下来在 `Map::CopyWithField` 中：
-```c++
+```cpp
   Handle<Map> new_map = Map::CopyAddDescriptor(map, &d, flag);
 ```
 `CopyAddDescriptor` 执行：
-```c++
+```cpp
   Handle<DescriptorArray> descriptors(map->instance_descriptors());
  
   int nof = map->NumberOfOwnDescriptors();
@@ -1217,20 +1217,20 @@ Layout descriptor: <all tagged>
 TODO：仔细查看 LayoutDescriptor。
 
 稍后在 `Object::AddDataProperty` 中实际添加值时：
-```c++
+```cpp
   it->WriteDataValue(value, true);
 ```
 此调用最终将进入 `src/lookup.cc`，在我们的例子中，路径将是以下调用：
-```c++
+```cpp
   JSObject::cast(*holder)->WriteToField(descriptor_number(), property_details_, *value);
 ```
 TODO：仔细查看 LookupIterator。
 `WriteToField` 可以在 `src/objects-inl.h` 中找到：
-```c++
+```cpp
   FieldIndex index = FieldIndex::ForDescriptor(map(), descriptor);
 ```
 `FieldIndex::ForDescriptor` 可以在 `src/field-index-inl.h` 中找到：
-```c++
+```cpp
 inline FieldIndex FieldIndex::ForDescriptor(const Map* map, int descriptor_index) {
   PropertyDetails details = map->instance_descriptors()->GetDetails(descriptor_index);
   int field_index = details.field_index();
@@ -1256,7 +1256,7 @@ lldb) expr map->instance_descriptors()->Print()
 ```
 在我们的例子中，我们正在访问 PropertyDetails，然后获取 `field_index`，我认为它告诉我们该属性的值存储在对象中的什么位置。
 `ForDescriptor` 中的最后一个调用是 `ForPropertyIndex`：
-```c++
+```cpp
 inline FieldIndex FieldIndex::ForPropertyIndex(const Map* map,
                                                int property_index,
                                                Representation representation) {
@@ -1287,11 +1287,11 @@ inline FieldIndex FieldIndex::ForPropertyIndex(const Map* map,
 TODO：添加对象内属性示例。
 
 回到 `JSObject::WriteToField`：
-```c++
+```cpp
   RawFastPropertyAtPut(index, value);
 ```
 
-```c++
+```cpp
 void JSObject::RawFastPropertyAtPut(FieldIndex index, Object* value) {
   if (index.is_inobject()) {
     int offset = index.offset();
@@ -1313,7 +1313,7 @@ void JSObject::RawFastPropertyAtPut(FieldIndex index, Object* value) {
 (v8::internal::JSObject *) $21 = 0x00002c31c6a88b59
 ```
 JSObject 继承自 JSReceiver，后者是声明 `property_array()` 函数的地方。
-```c++
+```cpp
   inline PropertyArray* property_array() const;
 ```
 ```console
@@ -1360,7 +1360,7 @@ i::Handle<i::Map> map = i::Map::Create(asInternal(isolate_), 1);
 (lldb) br s -f map_test.cc -l 63
 ```
 
-```c++
+```cpp
 Handle<Map> Factory::NewMap(InstanceType type,
                             int instance_size,
                             ElementsKind elements_kind,
@@ -1373,7 +1373,7 @@ Handle<Map> Factory::NewMap(InstanceType type,
 }
 ```
 我们可以看到上面调用了堆实例上的 `AllocateRawWithRetryOrFail`，传入大小 `88` 并指定 `MAP_SPACE`：
-```c++
+```cpp
 HeapObject* Heap::AllocateRawWithRetryOrFail(int size, AllocationSpace space,
                                              AllocationAlignment alignment) {
   AllocationResult alloc;
@@ -1397,11 +1397,11 @@ HeapObject* Heap::AllocateRawWithRetryOrFail(int size, AllocationSpace space,
 ```
 `alignment` 的默认值是 `kWordAligned`。阅读头文件中的文档，它说该函数将尝试在 `MAP_SPACE` 中执行大小为 `88` 的分配，如果失败，将执行完整的 GC 并重试分配。
 让我们看看 `AllocateRawWithLigthRetry`：
-```c++
+```cpp
   AllocationResult alloc = AllocateRaw(size, space, alignment);
 ```
 `AllocateRaw` 可以在 `src/heap/heap-inl.h` 中找到。根据 `space` 参数，会采取不同的路径。由于在我们的例子中是 `MAP_SPACE`，我们将关注该路径：
-```c++
+```cpp
 AllocationResult Heap::AllocateRaw(int size_in_bytes, AllocationSpace space, AllocationAlignment alignment) {
   ...
   HeapObject* object = nullptr;
@@ -1415,11 +1415,11 @@ AllocationResult Heap::AllocateRaw(int size_in_bytes, AllocationSpace space, All
 }
 ```
 `map_space_` 是 Heap 的私有成员（`src/heap/heap.h`）：
-```c++
+```cpp
 MapSpace* map_space_;
 ```
 `AllocateRawUnaligned` 可以在 `src/heap/spaces-inl.h` 中找到：
-```c++
+```cpp
 AllocationResult PagedSpace::AllocateRawUnaligned( int size_in_bytes, UpdateSkipList update_skip_list) {
   if (!EnsureLinearAllocationArea(size_in_bytes)) {
     return AllocationResult::Retry(identity());
@@ -1432,7 +1432,7 @@ AllocationResult PagedSpace::AllocateRawUnaligned( int size_in_bytes, UpdateSkip
 ```
 `update_skip_list` 的默认值是 `UPDATE_SKIP_LIST`。
 让我们看看 `AllocateLinearly`：
-```c++
+```cpp
 HeapObject* PagedSpace::AllocateLinearly(int size_in_bytes) {
   Address current_top = allocation_info_.top();
   Address new_top = current_top + size_in_bytes;
@@ -1453,13 +1453,13 @@ HeapObject* PagedSpace::AllocateLinearly(int size_in_bytes) {
 我一直在想为什么 Map（和其他 HeapObject）没有任何成员字段，而只有/主要是各种组成对象的字段的 getter/setter。答案是，指向例如 Map 实例的指针指向实例的第一个内存位置。而 getter/setter 函数使用索引来读写内存位置。索引主要以枚举字段的形式存在，定义了类型的内存布局。
 
 接下来，在 `AllocateRawUnaligned` 中我们有 `MSAN_ALLOCATED_UNINITIALIZED_MEMORY` 宏：
-```c++
+```cpp
   MSAN_ALLOCATED_UNINITIALIZED_MEMORY(object->address(), size_in_bytes);
 ```
 `MSAN_ALLOCATED_UNINITIALIZED_MEMORY` 可以在 `src/msan.h` 中找到，`ms` 代表 `Memory Sanitizer`，仅在定义了 `V8_US_MEMORY_SANITIZER` 时使用。
 返回的 `object` 在返回时将用于构造 `AllocationResult`。
 回到 `AllocateRaw`：
-```c++
+```cpp
 if (allocation.To(&object)) {
     ...
     OnAllocationEvent(object, size_in_bytes);
@@ -1468,7 +1468,7 @@ if (allocation.To(&object)) {
   return allocation;
 ```
 这将使我们返回到 `AllocateRawWithLightRetry`：
-```c++
+```cpp
 AllocationResult alloc = AllocateRaw(size, space, alignment);
 if (alloc.To(&result)) {
   DCHECK(result != exception());
@@ -1476,19 +1476,19 @@ if (alloc.To(&result)) {
 }
 ```
 这将使我们返回到 `AllocateRawWithRetryOrFail`：
-```c++
+```cpp
   HeapObject* result = AllocateRawWithLigthRetry(size, space, alignment);
   if (result) return result;
 ```
 该返回将返回到 `src/heap/factory.cc` 中的 `NewMap`：
-```c++
+```cpp
   result->set_map_after_allocation(*meta_map(), SKIP_WRITE_BARRIER);
   return handle(InitializeMap(Map::cast(result), type, instance_size,
                               elements_kind, inobject_properties),
                 isolate());
 ```
 `InitializeMap`：
-```c++
+```cpp
   map->set_instance_type(type);
   map->set_prototype(*null_value(), SKIP_WRITE_BARRIER);
   map->set_constructor_or_backpointer(*null_value(), SKIP_WRITE_BARRIER);
@@ -1528,12 +1528,12 @@ Context 继承自 `FixedArray`（`src/context.h`）。因此，Context 的实例
 
 ### V8_EXPORT
 这在 V8 源代码的许多地方都可以看到。例如：
-```c++
+```cpp
     class V8_EXPORT ArrayBuffer : public Object {
 ```
 这是什么？
 它是一个预处理器宏，看起来像这样：
-```c++
+```cpp
     #if V8_HAS_ATTRIBUTE_VISIBILITY && defined(V8_SHARED)
     # ifdef BUILDING_V8_SHARED
     #  define V8_EXPORT __attribute__ ((visibility("default")))
@@ -1551,7 +1551,7 @@ Context 继承自 `FixedArray`（`src/context.h`）。因此，Context 的实例
 
 可见性可以通过使用编译器选项或可见性属性来控制。
 这里我们可以看到我们的 JavaScript 作为一个 String。
-```c++
+```cpp
     std::unique_ptr<Utf16CharacterStream> stream(ScannerStream::For(source));
     scanner_.Initialize(stream.get(), info->is_module());
     result = DoParseProgram(info);
@@ -1573,12 +1573,12 @@ Context 继承自 `FixedArray`（`src/context.h`）。因此，Context 的实例
     result = CompileToplevel(&parse_info, isolate, Handle<SharedFunctionInfo>::null());
 ```
 这将进入 `CompileToplevel`（在同一个文件 `src/compiler.cc` 中）：
-```c++
+```cpp
     // 编译代码。
     result = CompileUnoptimizedCode(parse_info, shared_info, isolate);
 ```
 这将进入 `CompileUnoptimizedCode`（在同一个文件 `src/compiler.cc` 中）：
-```c++
+```cpp
     // 准备并执行最外层函数的非优化编译任务。
     std::unique_ptr<CompilationJob> outer_job(
        PrepareAndExecuteUnoptimizedCompileJob(parse_info, parse_info->literal(),
@@ -1593,7 +1593,7 @@ Context 继承自 `FixedArray`（`src/context.h`）。因此，Context 的实例
     }
 ```
 `PrepareJobImpl`：
-```c++
+```cpp
     CodeGenerator::MakeCodePrologue(parse_info(), compilation_info(),
                                     "interpreter");
     return SUCCEEDED;
@@ -1601,17 +1601,17 @@ Context 继承自 `FixedArray`（`src/context.h`）。因此，Context 的实例
 `codegen.cc` 中的 `MakeCodePrologue`：
 
 `interpreter.cc` 中的 `ExecuteJobImpl`：
-```c++
+```cpp
     generator()->GenerateBytecode(stack_limit());    
 ```
 `src/interpreter/bytecode-generator.cc`：
-```c++
+```cpp
      RegisterAllocationScope register_scope(this);
 ```
 字节码是基于寄存器的（如果这个术语正确的话），我们之前有一个例子。我猜这就是这个调用的目的。
 
 `VisitDeclarations` 将遍历文件中的所有声明，在我们的例子中是：
-```c++
+```cpp
     var user1 = new Person('Fletch');
     var user2 = new Person('Dr.Rosen');
 
@@ -1739,7 +1739,7 @@ Handler Table (size = 16) 将常量池条目 `<name_index>` 中的全局变量�
 `Symbol` 类的声明可以在 `v8.h` 中找到，内部实现在 `src/api/api.cc` 中。
 
 众所周知的 Symbol 是使用宏生成的，因此你无法仅通过搜索静态函数名（如 `GetToPrimitive`）来找到它们。
-```c++
+```cpp
 #define WELL_KNOWN_SYMBOLS(V)                 \
   V(AsyncIterator, async_iterator)            \
   V(HasInstance, has_instance)                \
@@ -1760,7 +1760,7 @@ Handler Table (size = 16) 将常量池条目 `<name_index>` 中的全局变量�
   }
 ```
 因此 `GetToPrimitive` 将变为：
-```c++
+```cpp
 Local<Symbol> v8::Symbol::GeToPrimitive(Isolate* isolate) {
   i::Isolate* i_isolate = reinterpret_cast<i::Isolate*>(isolate);
   return Utils::ToLocal(i_isolate->factory()->to_primitive_symbol());
@@ -1801,23 +1801,23 @@ CodeStub 链接。具有 Stub 链接的 Builtin 可用于将通用代码提取�
     (lldb) br s -f bootstrapper.cc -l 2684
 ```
 让我们看看 `JSON` 对象是如何设置的：
-```c++
+```cpp
     Handle<String> name = factory->InternalizeUtf8String("JSON");
     Handle<JSObject> json_object = factory->NewJSObject(isolate->object_function(), TENURED);
 ```
 `TENURED` 意味着该对象应直接分配在老生代（Old generation）中。
-```c++
+```cpp
     JSObject::AddProperty(global, name, json_object, DONT_ENUM);
 ```
 `DONT_ENUM` 会被一些 Builtin 函数检查，如果设置了，该对象将被这些函数忽略。
-```c++
+```cpp
     SimpleInstallFunction(json_object, "parse", Builtins::kJsonParse, 2, false);
 ```
 这里我们可以看到我们正在安装一个名为 `parse` 的函数，它接受 2 个参数。你可以在 `src/builtins/builtins-json.cc` 中找到定义。
 `SimpleInstallFunction` 是做什么的？
 
 以 `console` 为例，它是使用以下代码创建的：
-```c++
+```cpp
     Handle<JSObject> console = factory->NewJSObject(cons, TENURED);
     JSObject::AddProperty(global, name, console, DONT_ENUM);
     SimpleInstallFunction(console, "debug", Builtins::kConsoleDebug, 1, false,
@@ -1835,14 +1835,14 @@ CodeStub 链接。具有 Stub 链接的 Builtin 可用于将通用代码提取�
 我们可以看到 `base` 是我们指向 JSObject 的 Handle，`name` 是 "debug"。
 `Builtins::Name` 是 `Builtins:kConsoleDebug`。这是在哪里定义的？
 你可以在 `src/builtins/builtins-definitions.h` 中找到一个名为 `CPP` 的宏：
-```c++
+```cpp
    CPP(ConsoleDebug)
 ```
 这个宏展开后是什么？
 它是 `builtin-definitions.h` 中 `BUILTIN_LIST_BASE` 宏的一部分。
 我们必须查看 `BUILTIN_LIST` 在哪里被使用，我们可以在 `builtins.cc` 中找到。
 在 `builtins.cc` 中，我们有一个 `BuiltinMetadata` 数组，声明如下：
-```c++
+```cpp
     const BuiltinMetadata builtin_metadata[] = {
       BUILTIN_LIST(DECL_CPP, DECL_API, DECL_TFJ, DECL_TFC, DECL_TFS, DECL_TFH, DECL_ASM)
     };
@@ -1851,7 +1851,7 @@ CodeStub 链接。具有 Stub 链接的 Builtin 可用于将通用代码提取�
                                 { FUNCTION_ADDR(Builtin_##Name) }},
 ```
 这将展开为在数组中创建一个 `BuiltinMetadata` 结构体条目。`BuiltinMetadata` 结构体如下所示，这可能有助于理解发生了什么：
-```c++
+```cpp
     struct BuiltinMetadata {
       const char* name;
       Builtins::Kind kind;
@@ -1862,7 +1862,7 @@ CodeStub 链接。具有 Stub 链接的 Builtin 可用于将通用代码提取�
     };
 ```
 因此 `CPP(ConsoleDebug)` 将展开为数组中的一个条目，看起来像这样：
-```c++
+```cpp
     { ConsoleDebug, 
       Builtins::CPP, 
       {
@@ -1875,7 +1875,7 @@ CodeStub 链接。具有 Stub 链接的 Builtin 可用于将通用代码提取�
 回到我试图回答的问题：
 “`Builtins::Name` 是 `Builtins:kConsoleDebug`。这是在哪里定义的？”
 为此，我们必须查看 `builtins.h` 和枚举 `Name`：
-```c++
+```cpp
     enum Name : int32_t {
     #define DEF_ENUM(Name, ...) k##Name,
         BUILTIN_LIST_ALL(DEF_ENUM)
@@ -1884,7 +1884,7 @@ CodeStub 链接。具有 Stub 链接的 Builtin 可用于将通用代码提取�
      };
 ```
 这将使用 `DEF_ENUM` 宏展开为 `builtin-definitions.h` 中的完整 Builtins 列表。因此 `ConsoleDebug` 的展开将如下所示：
-```c++
+```cpp
     enum Name: int32_t {
       ...
       kDebugConsole,
@@ -1892,7 +1892,7 @@ CodeStub 链接。具有 Stub 链接的 Builtin 可用于将通用代码提取�
     };
 ```
 回到 `SimpleInstallFunction` 的参数：
-```c++
+```cpp
     SimpleInstallFunction(console, "debug", Builtins::kConsoleDebug, 1, false,
                           NONE);
 
@@ -1907,12 +1907,12 @@ CodeStub 链接。具有 Stub 链接的 Builtin 可用于将通用代码提取�
 ```
 我们了解了 `Builtins::Name`，那么看看 `len`（为 1），这是什么？
 `SimpleInstallFunction` 将调用：
-```c++
+```cpp
     Handle<JSFunction> fun =
       SimpleCreateFunction(base->GetIsolate(), function_name, call, len, adapt);
 ```
 如果 `adapt` 为 true，则会使用 `len`，但在我们的例子中它为 false。如果 `adapt` 为 true，它将用于：
-```c++
+```cpp
     fun->shared()->set_internal_formal_parameter_count(len);
 ```
 我不确定这里的 `adapt` 指的是什么。
@@ -1922,7 +1922,7 @@ CodeStub 链接。具有 Stub 链接的 Builtin 可用于将通用代码提取�
 
 这篇 [博客](https://v8project.blogspot.se/2017/11/csa.html) 讨论了 CSA。
 在这里我们可以看到我们的 JavaScript 作为一个 String。
-```c++
+```cpp
     std::unique_ptr<Utf16CharacterStream> stream(ScannerStream::For(source));
     scanner_.Initialize(stream.get(), info->is_module());
     result = DoParseProgram(info);
@@ -1944,12 +1944,12 @@ CodeStub 链接。具有 Stub 链接的 Builtin 可用于将通用代码提取�
     result = CompileToplevel(&parse_info, isolate, Handle<SharedFunctionInfo>::null());
 ```
 这将进入 `CompileToplevel`（在同一个文件 `src/compiler.cc` 中）：
-```c++
+```cpp
     // 编译代码。
     result = CompileUnoptimizedCode(parse_info, shared_info, isolate);
 ```
 这将进入 `CompileUnoptimizedCode`（在同一个文件 `src/compiler.cc` 中）：
-```c++
+```cpp
     // 准备并执行最外层函数的非优化编译任务。
     std::unique_ptr<CompilationJob> outer_job(
        PrepareAndExecuteUnoptimizedCompileJob(parse_info, parse_info->literal(),
@@ -1964,7 +1964,7 @@ CodeStub 链接。具有 Stub 链接的 Builtin 可用于将通用代码提取�
     }
 ```
 `PrepareJobImpl`：
-```c++
+```cpp
     CodeGenerator::MakeCodePrologue(parse_info(), compilation_info(),
                                     "interpreter");
     return SUCCEEDED;
@@ -1972,17 +1972,17 @@ CodeStub 链接。具有 Stub 链接的 Builtin 可用于将通用代码提取�
 `codegen.cc` 中的 `MakeCodePrologue`：
 
 `interpreter.cc` 中的 `ExecuteJobImpl`：
-```c++
+```cpp
     generator()->GenerateBytecode(stack_limit());    
 ```
 `src/interpreter/bytecode-generator.cc`：
-```c++
+```cpp
      RegisterAllocationScope register_scope(this);
 ```
 字节码是基于寄存器的（如果这个术语正确的话），我们之前有一个例子。我猜这就是这个调用的目的。
 
 `VisitDeclarations` 将遍历文件中的所有声明，在我们的例子中是：
-```c++
+```cpp
     var user1 = new Person('Fletch');
     var user2 = new Person('Dr.Rosen');
 
@@ -2110,7 +2110,7 @@ Handler Table (size = 16) 将常量池条目 `<name_index>` 中的全局变量�
 `Symbol` 类的声明可以在 `v8.h` 中找到，内部实现在 `src/api/api.cc` 中。
 
 众所周知的 Symbol 是使用宏生成的，因此你无法仅通过搜索静态函数名（如 `GetToPrimitive`）来找到它们。
-```c++
+```cpp
 #define WELL_KNOWN_SYMBOLS(V)                 \
   V(AsyncIterator, async_iterator)            \
   V(HasInstance, has_instance)                \
@@ -2131,7 +2131,7 @@ Handler Table (size = 16) 将常量池条目 `<name_index>` 中的全局变量�
   }
 ```
 因此 `GetToPrimitive` 将变为：
-```c++
+```cpp
 Local<Symbol> v8::Symbol::GeToPrimitive(Isolate* isolate) {
   i::Isolate* i_isolate = reinterpret_cast<i::Isolate*>(isolate);
   return Utils::ToLocal(i_isolate->factory()->to_primitive_symbol());
@@ -2172,23 +2172,23 @@ CodeStub 链接。具有 Stub 链接的 Builtin 可用于将通用代码提取�
     (lldb) br s -f bootstrapper.cc -l 2684
 ```
 让我们看看 `JSON` 对象是如何设置的：
-```c++
+```cpp
     Handle<String> name = factory->InternalizeUtf8String("JSON");
     Handle<JSObject> json_object = factory->NewJSObject(isolate->object_function(), TENURED);
 ```
 `TENURED` 意味着该对象应直接分配在老生代（Old generation）中。
-```c++
+```cpp
     JSObject::AddProperty(global, name, json_object, DONT_ENUM);
 ```
 `DONT_ENUM` 会被一些 Builtin 函数检查，如果设置了，该对象将被这些函数忽略。
-```c++
+```cpp
     SimpleInstallFunction(json_object, "parse", Builtins::kJsonParse, 2, false);
 ```
 这里我们可以看到我们正在安装一个名为 `parse` 的函数，它接受 2 个参数。你可以在 `src/builtins/builtins-json.cc` 中找到定义。
 `SimpleInstallFunction` 是做什么的？
 
 以 `console` 为例，它是使用以下代码创建的：
-```c++
+```cpp
     Handle<JSObject> console = factory->NewJSObject(cons, TENURED);
     JSObject::AddProperty(global, name, console, DONT_ENUM);
     SimpleInstallFunction(console, "debug", Builtins::kConsoleDebug, 1, false,
@@ -2206,14 +2206,14 @@ CodeStub 链接。具有 Stub 链接的 Builtin 可用于将通用代码提取�
 我们可以看到 `base` 是我们指向 JSObject 的 Handle，`name` 是 "debug"。
 `Builtins::Name` 是 `Builtins:kConsoleDebug`。这是在哪里定义的？
 你可以在 `src/builtins/builtins-definitions.h` 中找到一个名为 `CPP` 的宏：
-```c++
+```cpp
    CPP(ConsoleDebug)
 ```
 这个宏展开后是什么？
 它是 `builtin-definitions.h` 中 `BUILTIN_LIST_BASE` 宏的一部分。
 我们必须查看 `BUILTIN_LIST` 在哪里被使用，我们可以在 `builtins.cc` 中找到。
 在 `builtins.cc` 中，我们有一个 `BuiltinMetadata` 数组，声明如下：
-```c++
+```cpp
     const BuiltinMetadata builtin_metadata[] = {
       BUILTIN_LIST(DECL_CPP, DECL_API, DECL_TFJ, DECL_TFC, DECL_TFS, DECL_TFH, DECL_ASM)
     };
@@ -2222,7 +2222,7 @@ CodeStub 链接。具有 Stub 链接的 Builtin 可用于将通用代码提取�
                                 { FUNCTION_ADDR(Builtin_##Name) }},
 ```
 这将展开为在数组中创建一个 `BuiltinMetadata` 结构体条目。`BuiltinMetadata` 结构体如下所示，这可能有助于理解发生了什么：
-```c++
+```cpp
     struct BuiltinMetadata {
       const char* name;
       Builtins::Kind kind;
@@ -2233,7 +2233,7 @@ CodeStub 链接。具有 Stub 链接的 Builtin 可用于将通用代码提取�
     };
 ```
 因此 `CPP(ConsoleDebug)` 将展开为数组中的一个条目，看起来像这样：
-```c++
+```cpp
     { ConsoleDebug, 
       Builtins::CPP, 
       {
@@ -2246,7 +2246,7 @@ CodeStub 链接。具有 Stub 链接的 Builtin 可用于将通用代码提取�
 回到我试图回答的问题：
 “`Builtins::Name` 是 `Builtins:kConsoleDebug`。这是在哪里定义的？”
 为此，我们必须查看 `builtins.h` 和枚举 `Name`：
-```c++
+```cpp
     enum Name : int32_t {
     #define DEF_ENUM(Name, ...) k##Name,
         BUILTIN_LIST_ALL(DEF_ENUM)
@@ -2255,7 +2255,7 @@ CodeStub 链接。具有 Stub 链接的 Builtin 可用于将通用代码提取�
      };
 ```
 这将使用 `DEF_ENUM` 宏展开为 `builtin-definitions.h` 中的完整 Builtins 列表。因此 `ConsoleDebug` 的展开将如下所示：
-```c++
+```cpp
     enum Name: int32_t {
       ...
       kDebugConsole,
@@ -2263,7 +2263,7 @@ CodeStub 链接。具有 Stub 链接的 Builtin 可用于将通用代码提取�
     };
 ```
 回到 `SimpleInstallFunction` 的参数：
-```c++
+```cpp
     SimpleInstallFunction(console, "debug", Builtins::kConsoleDebug, 1, false,
                           NONE);
 
@@ -2278,12 +2278,12 @@ CodeStub 链接。具有 Stub 链接的 Builtin 可用于将通用代码提取�
 ```
 我们了解了 `Builtins::Name`，那么看看 `len`（为 1），这是什么？
 `SimpleInstallFunction` 将调用：
-```c++
+```cpp
     Handle<JSFunction> fun =
       SimpleCreateFunction(base->GetIsolate(), function_name, call, len, adapt);
 ```
 如果 `adapt` 为 true，则会使用 `len`，但在我们的例子中它为 false。如果 `adapt` 为 true，它将用于：
-```c++
+```cpp
     fun->shared()->set_internal_formal_parameter_count(len);
 ```
 我不确定这里的 `adapt` 指的是什么。
@@ -2293,7 +2293,7 @@ CodeStub 链接。具有 Stub 链接的 Builtin 可用于将通用代码提取�
 
 这篇 [博客](https://v8project.blogspot.se/2017/11/csa.html) 讨论了 CSA。
 随后检查参数是否为 `--isolate`、`--module` 或 `-e`，如果不是（如我们的情况）：
-```c++
+```cpp
     } else if (strncmp(str, "-", 1) != 0) {
       // 不是标志，因此它必须是要执行的脚本。
       options.script_executed = true;
@@ -2301,7 +2301,7 @@ CodeStub 链接。具有 Stub 链接的 Builtin 可用于将通用代码提取�
 TODO：我不确定 `SourceGroups` 是关于什么的，但先记录下来，稍后会重新审视。
 
 这将带我们回到 `src/d8.cc` 中的 `int Shell::Main`：
-```c++
+```cpp
     ::V8::InitializeICUDefaultLocation(argv[0], options.icu_data_file);
 
     (lldb) p argv[0]
@@ -2310,36 +2310,36 @@ TODO：我不确定 `SourceGroups` 是关于什么的，但先记录下来，稍
 参见 [ICU](international-component-for-unicode) 了解更多细节。
 
 接下来初始化默认的 V8 平台：
-```c++
+```cpp
     g_platform = i::FLAG_verify_predictable ? new PredictablePlatform() : v8::platform::CreateDefaultPlatform();
 ```
 在我们的例子中将调用 `v8::platform::CreateDefaultPlatform()`。
 
 然后我们回到 `Main`，有以下几行：
-```c++
+```cpp
     2685 v8::V8::InitializePlatform(g_platform);
     2686 v8::V8::Initialize();
 ```
 这与我在 [Node.js 启动过程](https://github.com/danbev/learning-nodejs#startint-argc-char-argv) 中看到的非常相似。
 
 我们没有在命令行中指定任何 `natives_blob` 或 `snapshot_blob` 作为选项，因此将使用默认值：
-```c++
+```cpp
     v8::V8::InitializeExternalStartupData(argv[0]);
 ```
 回到 `src/d8.cc` 第 2918 行：
-```c++
+```cpp
     Isolate* isolate = Isolate::New(create_params);
 ```
 此调用将带我们进入 `api.cc` 第 8185 行：
-```c++
+```cpp
      i::Isolate* isolate = new i::Isolate(false);
 ```
 因此，我们正在调用 Isolate 构造函数（在 `src/isolate.cc` 中）。
-```c++
+```cpp
     isolate->set_snapshot_blob(i::Snapshot::DefaultSnapshotBlob());
 ```
 `api.cc`：
-```c++
+```cpp
     isolate->Init(NULL);
     
     compilation_cache_ = new CompilationCache(this);
@@ -2370,15 +2370,15 @@ TODO：我不确定 `SourceGroups` 是关于什么的，但先记录下来，稍
 TODO：理清这些宏的作用。
 
 在 `src/v8.cc` 中，我们有几个检查，看传入的选项是否用于 `stress_run`，但由于我们没有传入任何此类标志，将遵循此代码路径，调用 `RunMain`：
-```c++
+```cpp
     result = RunMain(isolate, argc, argv, last_run);
 ```
 这最终将调用：
-```c++
+```cpp
     options.isolate_sources[0].Execute(isolate);
 ```
 这将调用 `SourceGroup::Execute(Isolate* isolate)`：
-```c++
+```cpp
     // 使用所有其他参数作为要加载和运行的文件名。
     HandleScope handle_scope(isolate);
     Local<String> file_name = String::NewFromUtf8(isolate, arg, NewStringType::kNormal).ToLocalChecked();
@@ -2400,25 +2400,25 @@ TODO：理清这些宏的作用。
     }
 ```
 这将委托给 `ScriptCompiler(Local<Context>, Source* source, CompileOptions options)`：
-```c++
+```cpp
     auto maybe = CompileUnboundInternal(isolate, source, options);
 ```
 `CompileUnboundInternal`：
-```c++
+```cpp
     result = i::Compiler::GetSharedFunctionInfoForScript(
         str, name_obj, line_offset, column_offset, source->resource_options,
         source_map_url, isolate->native_context(), NULL, &script_data, options,
         i::NOT_NATIVES_CODE);
 ```
 `src/compiler.cc`：
-```c++
+```cpp
     // 编译函数并将其添加到缓存中。
     ParseInfo parse_info(script);
     Zone compile_zone(isolate->allocator(), ZONE_NAME);
     CompilationInfo info(&compile_zone, &parse_info, Handle<JSFunction>::null());
 ```
 回到 `src/compiler.cc-info.cc`：
-```c++
+```cpp
     result = CompileToplevel(&info);
 
     (lldb) job *result
@@ -2458,11 +2458,11 @@ TODO：理清这些宏的作用。
      - bytecode_array = 0x17df0df30c61
 ```
 回到 `d8.cc`：
-```c++
+```cpp
     maybe_result = script->Run(realm);
 ```
 `src/api.cc`：
-```c++
+```cpp
     auto fun = i::Handle<i::JSFunction>::cast(Utils::OpenHandle(this));
 
     (lldb) job *fun
@@ -2519,7 +2519,7 @@ TODO：理清这些宏的作用。
 ### v8::String::NewFromOneByte
 当我第一次读到这个函数名时，我有点困惑，以为它与字符串的长度有关。但这里的 byte 是指组成字符串的字符类型。
 例如，一个单字节字符将被重新解释为 `uint8_t`：
-```c++
+```cpp
     const char* data
 
     reinterpret_cast<const uint8_t*>(data)
@@ -2536,12 +2536,12 @@ TODO：理清这些宏的作用。
     (lldb) br s -n main
 ```
 我将逐步执行直到以下调用：
-```c++
+```cpp
     script->Run(context).ToLocalChecked();
 ```
 `Script::Run` 定义在 `api.cc` 中。
 该函数中首先发生的是一个宏：
-```c++
+```cpp
     PREPARE_FOR_EXECUTION_WITH_CONTEXT_IN_RUNTIME_CALL_STATS_SCOPE(
          "v8", 
          "V8.Execute", 
@@ -2556,12 +2556,12 @@ TODO：理清这些宏的作用。
         bailout_value, HandleScopeClass, do_callback);
 ```
 那么预处理器会将其替换为什么：
-```c++
+```cpp
     auto isolate = context.IsEmpty() ? i::Isolate::Current()                               : reinterpret_cast<i::Isolate*>(context->GetIsolate());
 ```
 我暂时跳过 `TRACE_EVENT_CALL_STATS_SCOPED`。
 `PREPARE_FOR_EXECUTION_GENERIC` 将被替换为：
-```c++
+```cpp
     if (IsExecutionTerminatingCheck(isolate)) {                        \
       return bailout_value;                                            \
     }                                                                  \
@@ -2572,7 +2572,7 @@ TODO：理清这些宏的作用。
     bool has_pending_exception = false
 ```
 
-```c++
+```cpp
     auto fun = i::Handle<i::JSFunction>::cast(Utils::OpenHandle(this));
 
     (lldb) job *fun
@@ -2596,7 +2596,7 @@ TODO：理清这些宏的作用。
      }
 ```
 `i::JSFunction` 的代码是在 `src/api.h` 中生成的。让我们仔细看看。
-```c++
+```cpp
     #define DECLARE_OPEN_HANDLE(From, To) \
       static inline v8::internal::Handle<v8::internal::To> \
       OpenHandle(const From* that, bool allow_empty_handle = false);
@@ -2604,24 +2604,24 @@ TODO：理清这些宏的作用。
     OPEN_HANDLE_LIST(DECLARE_OPEN_HANDLE)
 ```
 `OPEN_HANDLE_LIST` 看起来像这样：
-```c++
+```cpp
     #define OPEN_HANDLE_LIST(V)                    \
     ....
     V(Script, JSFunction)                        \ 
 ```
 因此，将其展开为 `JSFunction` 后应变为：
-```c++
+```cpp
       static inline v8::internal::Handle<v8::internal::JSFunction> \
         OpenHandle(const Script* that, bool allow_empty_handle = false);
 ```
 因此将有一个名为 `OpenHandle` 的函数，它接受一个指向 `Script` 的 const 指针。
 
 在 `src/api.h` 稍下方还有另一个宏：
-```c++
+```cpp
     OPEN_HANDLE_LIST(MAKE_OPEN_HANDLE)
 ```
 `MAKE_OPEN_HANDLE`：
-```c++
+```cpp
     #define MAKE_OPEN_HANDLE(From, To)
       v8::internal::Handle<v8::internal::To> Utils::OpenHandle( 
       const v8::From* that, bool allow_empty_handle) {         
@@ -2631,7 +2631,7 @@ TODO：理清这些宏的作用。
 ```
 请记住 `JSFunction` 包含在 `OPEN_HANDLE_LIST` 中，因此在预处理器处理此头文件后，源代码中将出现以下内容：
 一个具体的例子看起来像这样：
-```c++
+```cpp
 v8::internal::Handle<v8::internal::JSFunction> Utils::OpenHandle(
     const v8::Script* that, bool allow_empty_handle) {
   return v8::internal::Handle<v8::internal::JSFunction>(
@@ -2664,13 +2664,13 @@ $ clang++ -I./out/x64.release/gen -I. -I./include -E src/api/api-inl.h > api-inl
 
 ### OpenHandle
 此调用是做什么的：
-```c++
+```cpp
     Utils::OpenHandle(*(source->source_string));
 
     OPEN_HANDLE_LIST(MAKE_OPEN_HANDLE)
 ```
 这是定义在 `src/api.h` 中的一个宏：
-```c++
+```cpp
     #define MAKE_OPEN_HANDLE(From, To)                                             \
       v8::internal::Handle<v8::internal::To> Utils::OpenHandle(                    \
           const v8::From* that, bool allow_empty_handle) {                         \
@@ -2683,7 +2683,7 @@ $ clang++ -I./out/x64.release/gen -I. -I./include -E src/api/api-inl.h > api-inl
 ```
 Builtins 曾被编译并存储在快照中，但现在看来它们被放置在 `out.gn/learning/gen/embedded.cc` 中，并与编译产生的对象文件结合生成 `libv8.dylib`。
 V8 有一个名为 `v8_enable_embedded_builtins` 的配置选项，在这种情况下，`embedded.cc` 将被添加到源文件列表中。这是在 `BUILD.gn` 和 `v8_snapshot` 目标中完成的。如果 `v8_enable_embedded_builtins` 为 false，则将包含 `src/snapshot/embedded-empty.cc`。这两个文件都有以下函数：
-```c++
+```cpp
 const uint8_t* DefaultEmbeddedBlob()
 uint32_t DefaultEmbeddedBlobSize()
 
@@ -2693,12 +2693,12 @@ uint32_t TrustedEmbeddedBlobSize()
 #endif
 ```
 这些函数由 `isolate.cc` 使用并声明为 `extern`：
-```c++
+```cpp
 extern const uint8_t* DefaultEmbeddedBlob();
 extern uint32_t DefaultEmbeddedBlobSize();
 ```
 在 `Isolate::Isolate` 中可以看到 `DefaultEmbeddedBlob` 的用法，它在那里设置嵌入式 Blob：
-```c++
+```cpp
 SetEmbeddedBlob(DefaultEmbeddedBlob(), DefaultEmbeddedBlobSize());
 ```
 让我们在那里设置一个断点，看看它是否为空。
@@ -2709,13 +2709,13 @@ SetEmbeddedBlob(DefaultEmbeddedBlob(), DefaultEmbeddedBlobSize());
 可以看到我们没有使用空的。
 
 在 `src/snapshot/deserializer.cc`（第 552 行）中，我们有一个对 `embedded_blob()` 的检查：
-```c++
+```cpp
   CHECK_NOT_NULL(isolate->embedded_blob());
   EmbeddedData d = EmbeddedData::FromBlob();
   Address address = d.InstructionStartOfBuiltin(builtin_index);
 ```
 `EmbeddedData` 可以在 `src/snapshot/snapshot.h` 中找到，实现在 `snapshot-common.cc` 中。
-```c++
+```cpp
 Address EmbeddedData::InstructionStartOfBuiltin(int i) const {
   const struct Metadata* metadata = Metadata();
   const uint8_t* result = RawData() + metadata[i].instructions_offset;
@@ -2726,7 +2726,7 @@ Address EmbeddedData::InstructionStartOfBuiltin(int i) const {
 (lldb) expr *metadata
 (const v8::internal::EmbeddedData::Metadata) $7 = (instructions_offset = 0, instructions_length = 1464)
 ```
-```c++
+```cpp
   struct Metadata {
     // Blob 布局信息。
     uint32_t instructions_offset;
@@ -2756,7 +2756,7 @@ Address EmbeddedData::InstructionStartOfBuiltin(int i) const {
 0x101b14ee8: 0xec 0x28 0x48 0x89 0x55
 ```
 我们可以将其与 `out.gn/learning/gen/embedded.cc` 进行比较：
-```c++
+```cpp
 V8_EMBEDDED_TEXT_HEADER(v8_Default_embedded_blob_)
 __asm__(
   ...
@@ -2765,7 +2765,7 @@ __asm__(
 );
 ```
 宏 `V8_EMBEDDED_TEXT_HEADER` 可以在 `src/snapshot/macros.h` 中找到：
-```c++
+```cpp
 #define V8_EMBEDDED_TEXT_HEADER(LABEL)         \
   __asm__(V8_ASM_DECLARE(#LABEL)               \
           ".csect " #LABEL "[DS]\n"            \
@@ -2779,7 +2779,7 @@ define V8_ASM_DECLARE(NAME) ".private_extern " V8_ASM_MANGLE_LABEL NAME "\n"
 #define V8_ASM_TEXT_SECTION ".csect .text[PR]\n"
 ```
 预处理器会将其展开为：
-```c++
+```cpp
   __asm__(".private_extern " _ v8_Default_embedded_blob_ "\n"
           ".csect " v8_Default_embedded_blob_ "[DS]\n"
           v8_Default_embedded_blob_ ":\n"
@@ -2794,7 +2794,7 @@ define V8_ASM_DECLARE(NAME) ".private_extern " V8_ASM_MANGLE_LABEL NAME "\n"
 ```
 
 回到 `src/snapshot/deserializer.cc`：
-```c++
+```cpp
   Address address = d.InstructionStartOfBuiltin(builtin_index);
   CHECK_NE(kNullAddress, address);
   if (RelocInfo::OffHeapTargetIsCodedSpecially()) {
@@ -3029,7 +3029,7 @@ persistent-obj.cc:57:38:   required from here
       |                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 目前，我们已经添加了一个 pragma 来避免 Node.js 中的这个警告，但我们希望在 V8 中以及更接近导致该警告的实际代码处添加它。在 Node 中，我们必须在头文件上设置 pragma。
-```c++
+```cpp
 template <class T>
 template <typename P>
 V8_INLINE void PersistentBase<T>::SetWeak(
@@ -3042,23 +3042,23 @@ V8_INLINE void PersistentBase<T>::SetWeak(
 }
 ```
 注意第二个参数是 `typename WeakCallbackInfo<P>::Callback`，它是一个 typedef：
-```c++
+```cpp
   typedef void (*Callback)(const WeakCallbackInfo<T>& data);
 ```
 这是 `Callback` 的函数声明，它是一个接受指向 const `WeakCallbackInfo<T>` 的引用并返回 void 的函数。所以我们可以这样定义它：
-```c++
+```cpp
 void WeakCallback(const v8::WeakCallbackInfo<Something>& data) {
   Something* obj = data.GetParameter();
   std::cout << "in make weak callback..." << '\n';
 }
 ```
 然后尝试将其转换为：
-```c++
+```cpp
   typedef typename v8::WeakCallbackInfo<void>::Callback Callback;
   Callback cb = reinterpret_cast<Callback>(WeakCallback);
 ```
 这样做是因为 `V8::MakeWeak` 具有以下签名：
-```c++
+```cpp
 void V8::MakeWeak(i::Address* location, void* parameter,
                   WeakCallbackInfo<void>::Callback weak_callback,
                   WeakCallbackType type) {
@@ -3148,7 +3148,7 @@ $ make torque-example
 这将在当前目录中创建一个名为 `gen/torque-generated` 的目录。注意该目录包含 C++ 头文件和源文件。
 
 它以 [torque-example.tq](./torque-example.tq) 作为输入。对于此文件，将生成以下头文件：
-```c++
+```cpp
 #ifndef V8_GEN_TORQUE_GENERATED_TORQUE_EXAMPLE_TQ_H_                            
 #define V8_GEN_TORQUE_GENERATED_TORQUE_EXAMPLE_TQ_H_                            
                                                                                 
@@ -3193,7 +3193,7 @@ $ cp torque-example.tq ../v8_src/v8/src/builtins/
 这已更新以适用于最新的 V8 版本。
 
 接下来，我们需要更新 `src/init/bootstrappers.cc` 以在 math 对象上添加/安装此函数：
-```c++
+```cpp
   SimpleInstallFunction(isolate_, math, "is42", Builtins::kMathIs42, 1, true);
 ```
 之后我们需要重新构建 V8：
@@ -3213,7 +3213,7 @@ false
 $ clang++ --sysroot=build/linux/debian_sid_amd64-sysroot -isystem=./buildtools/third_party/libc++/trunk/include -isystem=buildtools/third_party/libc++/trunk/include -I. -E out/x64.release_gcc/gen/torque-generated/src/builtins/math-tq-csa.cc > math.cc.pp
 ```
 如果我们打开 `math.cc.pp` 并搜索 `Is42`，我们可以找到：
-```c++
+```cpp
 class MathIs42Assembler : public CodeStubAssembler {                            
  public:                                                                        
   using Descriptor = Builtin_MathIs42_InterfaceDescriptor;                      
@@ -3239,20 +3239,20 @@ void MathIs42Assembler::GenerateMathIs42Impl() {
 这就是 Torque 编译器生成的内容，我们上面看到的是 `CodeStubAssemble` 类。
 
 如果我们查看 `out/x64.release_gcc/gen/torque-generated/builtin-definitions-tq.h`，可以找到以下生成的行：
-```c++
+```cpp
 TFJ(MathIs42, 1, kReceiver, kX) \                                               
 ```
 现在，有一个关于 [TF_BUILTIN](#tf_builtin) 宏的部分，它将创建函数声明、函数和类定义。
 
 现在，在 `src/builtins/builtins.h` 中我们有以下宏：
-```c++
+```cpp
 class Builtins {
  public:
 
   enum Name : int32_t {
 ```
 `SimpleInstallFunction` 的签名如下：
-```c++
+```cpp
 V8_NOINLINE Handle<JSFunction> SimpleInstallFunction(
     Isolate* isolate, Handle<JSObject> base, const char* name,
     Builtins::Name call, int len, bool adapt,
@@ -3365,11 +3365,11 @@ attempt to open /home/danielbevenius/work/google/v8_src/v8/out/x64.release_gcc/o
 嗯，实际上看函数的签名，它是 `V8_Fatal(char const*, ...)` 而不是 `char const*, int, char const*, ...)`。
 
 对于 Debug 构建，它将是：
-```c++
+```cpp
     void V8_Fatal(const char* file, int line, const char* format, ...);
 ```
 否则：
-```c++
+```cpp
     void V8_Fatal(const char* format, ...);
 ```
 所以看起来我需要将 debug 设置为 false。这样，`logging.o` 中的 `V8_Fatal` 符号为：
@@ -3419,7 +3419,7 @@ $ ninja -C out/wee8 wee8
 
 ### V8 内部 Isolate
 `src/execution/isolate.h` 是你可以找到 `v8::internal::Isolate` 的地方。
-```c++
+```cpp
 class V8_EXPORT_PRIVATE Isolate final : private HiddenFactory {
 ```
 `HiddenFactory` 只是为了允许 `Isolate` 私有继承自 `Factory`（可以在 `src/heap/factory.h` 中找到）。
@@ -3431,7 +3431,7 @@ $ LD_LIBRARY_PATH=../v8_src/v8/out/x64.release_gcc/ lldb ./hello-world
 (lldb) br s -n main
 Breakpoint 1: where = hello-world`main + 25 at hello-world.cc:41:38, address = 0x0000000000402821
 ```
-```c++
+```cpp
     V8::InitializeExternalStartupData(argv[0]);
 ```
 此调用将进入 `api.cc`，它只是将调用委托给内部（即 internal 命名空间）。如果你尝试步入此函数，你将直接跳到 `hello_world` 的下一行。这是因为我们编译 V8 时没有使用外部启动数据，所以此函数将为空：
@@ -3443,26 +3443,26 @@ Disassembly of section .text._ZN2v88internal37InitializeExternalStartupDataFromF
    0:	c3                   	retq
 ```
 接下来，我们有：
-```c++
+```cpp
     std::unique_ptr<Platform> platform = platform::NewDefaultPlatform();
 ```
 这将进入 `src/libplatform/default-platform.cc`，它将创建一个新的 `DefaultPlatform`。
 
-```c++
+```cpp
 Isolate* isolate = Isolate::New(create_params);
 ```
 这将调用 `Allocate`：
-```c++
+```cpp
 Isolate* isolate = Allocate();
 ```
-```c++
+```cpp
 Isolate* Isolate::Allocate() {
   return reinterpret_cast<Isolate*>(i::Isolate::New());
 }
 ```
 
 请记住，内部 `Isolate` 可以在 `src/execution/isolate.h` 中找到。在 `src/execution/isolate.cc` 中我们找到 `Isolate::New`：
-```c++
+```cpp
 Isolate* Isolate::New(IsolateAllocationMode mode) {
   std::unique_ptr<IsolateAllocator> isolate_allocator = std::make_unique<IsolateAllocator>(mode);
   void* isolate_ptr = isolate_allocator->isolate_memory();
@@ -3471,13 +3471,13 @@ Isolate* Isolate::New(IsolateAllocationMode mode) {
 所以我们首先创建一个 `IsolateAllocator` 实例，它将为单个 `Isolate` 实例分配内存。然后将其传递给 `Isolate` 构造函数，注意这里 `new` 的用法，这只是一个普通的堆分配。
 
 默认的 `new` 运算符已被删除，并提供了一个接受 `void` 指针的重写，该指针直接返回：
-```c++
+```cpp
   void* operator new(size_t, void* ptr) { return ptr; }
   void* operator new(size_t) = delete;
   void operator delete(void*) = delete;
 ```
 在这种情况下，它只是返回由 `isolate_memory()` 分配的内存。这样做的原因是，使用 `new` 运算符不仅会调用 `new` 运算符，编译器还会添加一个对类型构造函数的调用，并传入分配内存的地址。
-```c++
+```cpp
 Isolate::Isolate(std::unique_ptr<i::IsolateAllocator> isolate_allocator)
     : isolate_data_(this),
       isolate_allocator_(std::move(isolate_allocator)),
@@ -3495,14 +3495,14 @@ Isolate::Isolate(std::unique_ptr<i::IsolateAllocator> isolate_allocator)
       cancelable_task_manager_(new CancelableTaskManager()) {
 ```
 注意 `isolate_data_` 将通过调用构造函数来填充，该构造函数接受一个指向 `Isolate` 的指针。
-```c++
+```cpp
 class IsolateData final {
  public:
   explicit IsolateData(Isolate* isolate) : stack_guard_(isolate) {}
 ```
 
 回到 `Isolate` 的构造函数，我们有：
-```c++
+```cpp
 #define ISOLATE_INIT_LIST(V)                                                   \
   /* Assembler state. */                                                       \
   V(FatalErrorCallback, exception_behavior, nullptr)                           \
@@ -3514,7 +3514,7 @@ class IsolateData final {
 #undef ISOLATE_INIT_EXECUTE
 ```
 让我们展开第一个条目以了解发生了什么：
-```c++
+```cpp
    exception_behavior_ = (nullptr);
    oom_behavior_ = (nullptr);
    event_logger_ = (nullptr);
@@ -3559,13 +3559,13 @@ class IsolateData final {
 因此，在预处理器完成后，此列表中的所有条目都将成为 `Isolate` 类的私有成员。还将有公共访问器来获取和设置这些初始值（这是上面 `ISOLATE_INIT_LIST` 中的最后一个条目）。
 
 回到 `isolate.cc` 构造函数，我们有：
-```c++
+```cpp
 #define ISOLATE_INIT_ARRAY_EXECUTE(type, name, length) \
   memset(name##_, 0, sizeof(type) * length);
   ISOLATE_INIT_ARRAY_LIST(ISOLATE_INIT_ARRAY_EXECUTE)
 #undef ISOLATE_INIT_ARRAY_EXECUTE
 ```
-```c++
+```cpp
   v8::internal::TorqueGeneratedOddball<v8::internal::Oddball, v8::internal::PrimitiveHeapObject> = {
     v8::internal::PrimitiveHeapObject = {
       v8::internal::TorqueGeneratedPrimitiveHeapObject<v8::internal::PrimitiveHeapObject, v8::internal::HeapObject> = {
@@ -3604,7 +3604,7 @@ class IsolateData final {
 ```
 那么这些 Roots 是如何使用的，以 `undefined_value` 为例？
 大多数（也许是全部）需要的东西都通过 `Factory` 进行，内部 `Isolate` 就是其一种类型。在 Factory 中我们可以找到：
-```c++
+```cpp
 Handle<Oddball> Factory::undefined_value() {
   return Handle<Oddball>(&isolate()->roots_table()[RootIndex::kUndefinedValue]);
 }
@@ -3614,7 +3614,7 @@ Handle<Oddball> Factory::undefined_value() {
 单元测试 [isolate_test](./test/isolate_test.cc) 探索了内部 Isolate，并有上述方法的用法示例。
 
 `InitwithSnapshot` 将调用 `Isolate::Init`：
-```c++
+```cpp
 bool Isolate::Init(ReadOnlyDeserializer* read_only_deserializer,
                    StartupDeserializer* startup_deserializer) {
 
@@ -3624,7 +3624,7 @@ bool Isolate::Init(ReadOnlyDeserializer* read_only_deserializer,
   FOR_EACH_ISOLATE_ADDRESS_NAME(ASSIGN_ELEMENT)
 #undef ASSIGN_ELEMENT
 ```
-```c++
+```cpp
   Address isolate_addresses_[kIsolateAddressCount + 1] = {};
 ```
 ```console
@@ -3636,7 +3636,7 @@ $16 = {0 <repeats 13 times>}
 ```console
 $ clang++ -I./out/x64.release/gen -I. -I./include -E src/execution/isolate.cc > output
 ```
-```c++
+```cpp
 isolate_addresses_[IsolateAddressId::kHandlerAddress] = reinterpret_cast<Address>(handler_address());
 isolate_addresses_[IsolateAddressId::kCEntryFPAddress] = reinterpret_cast<Address>(c_entry_fp_address());
 isolate_addresses_[IsolateAddressId::kCFunctionAddress] = reinterpret_cast<Address>(c_function_address());
@@ -3651,7 +3651,7 @@ isolate_addresses_[IsolateAddressId::kExternalCaughtExceptionAddress] = reinterp
 isolate_addresses_[IsolateAddressId::kJSEntrySPAddress] = reinterpret_cast<Address>(js_entry_sp_address());
 ```
 然后函数（如 `handler_address()`）实现为：
-```c++ 
+```cpp 
 inline Address* handler_address() { return &thread_local_top()->handler_; }   
 ```
 ```console
@@ -3659,13 +3659,13 @@ inline Address* handler_address() { return &thread_local_top()->handler_; }
 0x1a3500003240:	0x00000000
 ```
 在程序的这一点上，我们只是将条目设置为指向 `ThreadLocalTop` 中指定的地址。在初始化时，它们大多会被初始化为 `kNullAddress`：
-```c++
+```cpp
 static const Address kNullAddress = 0;
 ```
 注意上面的函数返回指针，所以稍后这些指针可以更新为指向某些内容。这在什么时候/如何发生？让我们继续寻找答案……
 
 回到 `Isolate::Init`，我们有：
-```c++
+```cpp
   compilation_cache_ = new CompilationCache(this);
   descriptor_lookup_cache_ = new DescriptorLookupCache();
   inner_pointer_to_code_cache_ = new InnerPointerToCodeCache(this);
@@ -3693,7 +3693,7 @@ static const Address kNullAddress = 0;
   InitializeThreadLocal();
 ```
 让我们看看 `InitializeThreadLocal`：
-```c++
+```cpp
 void Isolate::InitializeThreadLocal() {
   thread_local_top()->Initialize(this);
   clear_pending_exception();
@@ -3701,14 +3701,14 @@ void Isolate::InitializeThreadLocal() {
   clear_scheduled_exception();
 }
 ```
-```c++
+```cpp
 void Isolate::clear_pending_exception() {
   DCHECK(!thread_local_top()->pending_exception_.IsException(this));
   thread_local_top()->pending_exception_ = ReadOnlyRoots(this).the_hole_value();
 }
 ```
 `ReadOnlyRoots`：
-```c++
+```cpp
 #define ROOT_ACCESSOR(Type, name, CamelName) \
   V8_INLINE class Type name() const;         \
   V8_INLINE Handle<Type> name##_handle() const;
@@ -3720,13 +3720,13 @@ void Isolate::clear_pending_exception() {
 ```console
 $ clang++ -I./out/x64.release/gen -I. -I./include -E src/roots/roots.h > output
 ```
-```c++
+```cpp
 inline __attribute__((always_inline)) class Map free_space_map() const;
 inline __attribute__((always_inline)) Handle<Map> free_space_map_handle() const;
 ```
 `Map` 类是所有 `HeapObject` 用来描述其结构的。注意还声明了一个 `Handle<Map>`。
 这些是由 `roots-inl.h` 中的宏生成的：
-```c++
+```cpp
 Map ReadOnlyRoots::free_space_map() const { 
   ((void) 0);
   return Map::unchecked_cast(Object(at(RootIndex::kFreeSpaceMap)));
@@ -3738,15 +3738,15 @@ Handle<Map> ReadOnlyRoots::free_space_map_handle() const {
 }
 ```
 注意这使用了前面提到的 `RootIndex` 枚举：
-```c++
+```cpp
   return Map::unchecked_cast(Object(at(RootIndex::kFreeSpaceMap)));
 ```
 在 `object/map.h` 中有以下行：
-```c++
+```cpp
   DECL_CAST(Map)
 ```
 可以在 `objects/object-macros.h` 中找到：
-```c++
+```cpp
 #define DECL_CAST(Type)                                 \
   V8_INLINE static Type cast(Object object);            \
   V8_INLINE static Type unchecked_cast(Object object) { \
@@ -3754,35 +3754,35 @@ Handle<Map> ReadOnlyRoots::free_space_map_handle() const {
   }
 ```
 这将展开为类似：
-```c++
+```cpp
   static Map cast(Object object);
   static Map unchecked_cast(Object object) {
     return bit_cast<Map>(object);
   }
 ```
 `Object` 部分是接受 `Address` 的 `Object` 构造函数：
-```c++
+```cpp
   explicit constexpr Object(Address ptr) : TaggedImpl(ptr) {}
 ```
 剩下的是 `at` 函数，它是 `ReadOnlyRoots` 中的一个私有函数：
-```c++
+```cpp
   V8_INLINE Address& at(RootIndex root_index) const;
 ```
 
 现在我们回到 `Isolate::Init`，在调用 `InitializeThreadLocal` 之后，我们有：
-```c++
+```cpp
 setup_delegate_->SetupBuiltins(this);
 ```
 
 在 `api.cc` 的下一行中，`i::OBJECT_TEMPLATE_INFO_TYPE` 是从哪里来的：
-```c++
+```cpp
   i::Handle<i::Struct> struct_obj = isolate->factory()->NewStruct(
       i::OBJECT_TEMPLATE_INFO_TYPE, i::AllocationType::kOld);
 ```
 
 ### InstanceType
 枚举 `InstanceType` 定义在 `src/objects/instance-type.h` 中：
-```c++
+```cpp
 #include "torque-generated/instance-types-tq.h" 
 
 enum InstanceType : uint16_t {
@@ -3794,27 +3794,27 @@ enum InstanceType : uint16_t {
 };
 ```
 在 `gen/torque-generated/instance-types-tq.h` 中我们可以找到：
-```c++
+```cpp
 #define TORQUE_ASSIGNED_INSTANCE_TYPES(V) \                                     
   ...
   V(OBJECT_TEMPLATE_INFO_TYPE, 79) \                                      
   ...
 ```
 在 `src/objects/objects-definitions.h` 中有一个列表：
-```c++
+```cpp
 #define STRUCT_LIST_GENERATOR_BASE(V, _)                                      \
   ...
   V(_, OBJECT_TEMPLATE_INFO_TYPE, ObjectTemplateInfo, object_template_info)   \
   ...
 ```
-```c++
+```cpp
 template <typename Impl>
 Handle<Struct> FactoryBase<Impl>::NewStruct(InstanceType type,
                                             AllocationType allocation) {
   Map map = Map::GetInstanceTypeMap(read_only_roots(), type);
 ```
 如果我们查看 `map.cc` 中的 `Map::GetInstanceTypeMap`，会发现：
-```c++
+```cpp
   Map map;
   switch (type) {
 #define MAKE_CASE(TYPE, Name, name) \
@@ -3829,11 +3829,11 @@ Handle<Struct> FactoryBase<Impl>::NewStruct(InstanceType type,
 (gdb) p type
 $1 = v8::internal::OBJECT_TEMPLATE_INFO_TYPE
 ```
-```c++
+```cpp
     map = roots.object_template_info_map();       \
 ```
 我们可以检查 `roots.cc` 的预处理器输出，发现：
-```c++
+```cpp
 Map ReadOnlyRoots::object_template_info_map() const { 
   ((void) 0);
   return Map::unchecked_cast(Object(at(RootIndex::kObjectTemplateInfoMap)));
@@ -3842,7 +3842,7 @@ Map ReadOnlyRoots::object_template_info_map() const {
 这是我们之前见过的。
 
 我遇到的一件事是想使用 `objects.cc` 中为 `InstanceType` 定义的重载 `<<` 运算符来打印 `InstanceType`。
-```c++
+```cpp
 std::ostream& operator<<(std::ostream& os, InstanceType instance_type) {
   switch (instance_type) {
 #define WRITE_TYPE(TYPE) \
@@ -3855,12 +3855,12 @@ std::ostream& operator<<(std::ostream& os, InstanceType instance_type) {
 }
 ```
 我使用的代码如下：
-```c++
+```cpp
   i::InstanceType type = map.instance_type();
   std::cout << "object_template_info_map type: " << type << '\n';
 ```
 这将导致调用 `UNREACHABLE()` 函数并抛出致命错误。但请注意，以下行可以工作：
-```c++
+```cpp
   std::cout << "object_template_info_map type: " << v8::internal::OBJECT_TEMPLATE_INFO_TYPE << '\n';
 ```
 并打印：
@@ -3868,12 +3868,12 @@ std::ostream& operator<<(std::ostream& os, InstanceType instance_type) {
 object_template_info_map type: OBJECT_TEMPLATE_INFO_TYPE
 ```
 在上面的 switch/case 块中，此值的 case 是：
-```c++
+```cpp
   case OBJECT_TEMPLATE_INFO_TYPE:
     return os << "OBJECT_TEMPLATE_INFO_TYPE"
 ```
 当调用 `map.instance_type()` 时，它返回一个值 `1023`，但 `OBJECT_TEMPLATE_INFO_TYPE` 的值是：
-```c++
+```cpp
 OBJECT_TEMPLATE_INFO_TYPE = 79
 ```
 我们可以使用以下代码确认这一点：
@@ -3889,12 +3889,12 @@ object_template_info_map type: 79
 
 ### Context 创建
 当我们使用以下代码创建一个新 Context 时：
-```c++
+```cpp
   Local<ObjectTemplate> global = ObjectTemplate::New(isolate_);
   Local<Context> context = Context::New(isolate_, nullptr, global);
 ```
 `include/v8.h` 中的 `Context` 类声明 `New` 如下：
-```c++
+```cpp
 static Local<Context> New(Isolate* isolate,
     ExtensionConfiguration* extensions = nullptr,
     MaybeLocal<ObjectTemplate> global_template = MaybeLocal<ObjectTemplate>(),
@@ -3906,7 +3906,7 @@ static Local<Context> New(Isolate* isolate,
 当步入 `Context::New(isolate_, nullptr, global)` 时，首先会在 `v8.h` 中 `DeserializeInternalFieldsCallback` 的构造函数中中断，该构造函数具有回调函数和 `data_args` 的默认值（均为 `nullptr`）。之后 gdb 会在 `MaybeLocal<Value>` 中中断，并将 `val_` 设置为 `nullptr`。接下来它会在 `global` 值的 `Local::operator*` 中中断，然后该值被传递给 `MaybeLocal<v8::ObjectTemplate>` 构造函数。在这些断点之后，断点将位于 `api.cc` 和 `v8::Context::New`。`New` 将调用 `api.cc` 中的 `NewContext`。
 
 会有一些检查和日志记录/追踪，然后调用 `CreateEnvironment`：
-```c++
+```cpp
 i::Handle<i::Context> env = CreateEnvironment<i::Context>(                         
     isolate,
     extensions,
@@ -3917,16 +3917,16 @@ i::Handle<i::Context> env = CreateEnvironment<i::Context>(
     microtask_queue); 
 ```
 `CreateEnvironment` 的第一行是：
-```c++
+```cpp
 ENTER_V8_FOR_NEW_CONTEXT(isolate);
 ```
 这是定义在 `api.cc` 中的一个宏：
-```c++
+```cpp
 i::VMState<v8::OTHER> __state__((isolate)); \                                 
 i::DisallowExceptions __no_exceptions__((isolate)) 
 ```
 所以我们中断的第一个断点将是 `execution/vm-state-inl.h` 和 `VMState` 的构造函数：
-```c++
+```cpp
 template <StateTag Tag>                                                         
 VMState<Tag>::VMState(Isolate* isolate)                                         
     : isolate_(isolate), previous_tag_(isolate->current_vm_state()) {           
@@ -3943,7 +3943,7 @@ v8::internal::Isolate::current_vm_state (this=0x372500000000) at ../../src/execu
 1072	  THREAD_LOCAL_TOP_ACCESSOR(StateTag, current_vm_state)
 ```
 获取它们：
-```c++
+```cpp
   inline Handle<Object> receiver() const;                                       
   inline Handle<JSFunction> target() const;                                     
   inline Handle<HeapObject> new_target() const;
@@ -3951,7 +3951,7 @@ v8::internal::Isolate::current_vm_state (this=0x372500000000) at ../../src/execu
 
 ### NativeContext
 可以在 `src/objects/contexts.h` 中找到，定义如下：
-```c++
+```cpp
 class NativeContext : public Context {
  public:
 
@@ -3969,7 +3969,7 @@ class NativeContext : public Context {
 ```
 
 在 `src/parsing/parser.h` 中我们可以找到：
-```c++
+```cpp
 class V8_EXPORT_PRIVATE Parser : public NON_EXPORTED_BASE(ParserBase<Parser>) { 
   ...
   enum CompletionKind {                                                             

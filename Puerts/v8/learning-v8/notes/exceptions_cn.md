@@ -4,21 +4,21 @@
 ### Exceptions
 当调用一个函数时，异常是如何在调用链中报告/触发的？
 
-```c++
+```cpp
   Local<FunctionTemplate> ft = FunctionTemplate::New(isolate_, function_callback);
   Local<Function> function = ft->GetFunction(context).ToLocalChecked();
   Local<Object> recv = Object::New(isolate_);
   MaybeLocal<Value> ret = function->Call(context, recv, 0, nullptr);
 ```
 `function->Call` 最终会进入 `src/api/api.cc` 中的 `Function::Call`，然后调用 `v8::internal::Execution::Call`：
-```c++
+```cpp
   has_pending_exception = !ToLocal<Value>(                                           
       i::Execution::Call(isolate, self, recv_obj, argc, args), &result);             
   RETURN_ON_FAILED_EXECUTION(Value);                                                 
   RETURN_ESCAPED(result);            
 ```
 注意，`Call` 的结果是 `MaybeHandle<Object>`，它将被传递给 `ToLocal<Value>`，定义在 `api.h` 中：
-```c++
+```cpp
 template <class T>                                                              
 inline bool ToLocal(v8::internal::MaybeHandle<v8::internal::Object> maybe,      
                     Local<T>* local) {                                          
@@ -31,7 +31,7 @@ inline bool ToLocal(v8::internal::MaybeHandle<v8::internal::Object> maybe,
 ```
 
 Execution::Call 将调用 `Invoke`：
-```c++
+```cpp
 V8_WARN_UNUSED_RESULT MaybeHandle<Object> Invoke(Isolate* isolate,              
                                                  const InvokeParams& params) {
     ...
@@ -52,7 +52,7 @@ V8_WARN_UNUSED_RESULT MaybeHandle<Object> Invoke(Isolate* isolate,
     return value;                                                 
 ```
 
-```c++
+```cpp
   VMState<EXTERNAL> state(isolate);                                             
   ExternalCallbackScope call_scope(isolate, FUNCTION_ADDR(f));                  
   FunctionCallbackInfo<v8::Value> info(values_, argv_, argc_); 
@@ -67,11 +67,11 @@ V8_WARN_UNUSED_RESULT MaybeHandle<Object> Invoke(Isolate* isolate,
 ```
 当我们的回调调用 `info.GetReturnValue()` 时，它从 args 中获取 ReturnType 槽位，我们将它的值设置为 8，然后返回。
 接下来，调用 `GetReturnValue`，然后返回到 `HandleApiCallHelper`，其中包含以下宏：
-```c++
+```cpp
   RETURN_EXCEPTION_IF_SCHEDULED_EXCEPTION(isolate, Object);
 ```
 该宏将被预处理器展开为：
-```c++
+```cpp
   do {
     Isolate* __isolate__ = (isolate);
     ((void) 0);
@@ -82,7 +82,7 @@ V8_WARN_UNUSED_RESULT MaybeHandle<Object> Invoke(Isolate* isolate,
   } while (false);
 ```
 因此在这种情况下，`has_scheduled_exception` 将为 true，请注意，一个空的 MaybeHandle 将被返回给 `Invoke`。
-```c++
+```cpp
       bool has_exception = value.is_null();                                     
       if (has_exception) {                                                      
         if (params.message_handling == Execution::MessageHandling::kReport) {   
@@ -96,7 +96,7 @@ V8_WARN_UNUSED_RESULT MaybeHandle<Object> Invoke(Isolate* isolate,
     }                                    
 ```
 这将返回到 `v8::Function::Call`：
-```c++
+```cpp
   has_pending_exception = !ToLocal<Value>(                                           
       i::Execution::Call(isolate, self, recv_obj, argc, args), &result);             
   RETURN_ON_FAILED_EXECUTION(Value);                                                 
@@ -106,7 +106,7 @@ V8_WARN_UNUSED_RESULT MaybeHandle<Object> Invoke(Isolate* isolate,
 ```console
 $ g++ -Iout/learning_v8/gen/ -I./include -I. -E src/api/api.cc
 ```
-```c++
+```cpp
   do {
     if (has_pending_exception) {
       call_depth_scope.Escape();
@@ -117,11 +117,11 @@ $ g++ -Iout/learning_v8/gen/ -I./include -I. -E src/api/api.cc
 
 ### 抛出异常
 当调用一个 Function 时，可以使用以下方式抛出异常：
-```c++
+```cpp
   isolate->ThrowException(String::NewFromUtf8(isolate, "some error").ToLocalChecked());
 ```
 `ThrowException` 可以在 `src/api/api.cc` 中找到，它的作用是：
-```c++
+```cpp
   ENTER_V8_DO_NOT_USE(isolate);                                                 
   // 如果我们传入一个空 handle，则抛出一个 undefined 异常，
   // 以便更优雅地处理内存不足的情况。
@@ -133,7 +133,7 @@ $ g++ -Iout/learning_v8/gen/ -I./include -I. -E src/api/api.cc
   return v8::Undefined(reinterpret_cast<v8::Isolate*>(isolate));      
 ```
 让我们仔细看看 `ScheduleThrow`：
-```c++
+```cpp
 void Isolate::ScheduleThrow(Object exception) {                                     
   Throw(exception);                                                                 
   PropagatePendingExceptionToExternalTryCatch();                                     
@@ -147,7 +147,7 @@ void Isolate::ScheduleThrow(Object exception) {
 `Throw` 最终将 pending_exception 设置为传入的异常。
 接下来，将调用 `PropagatePendingExceptionToExternalTryCatch`。这就是 `TryCatch` handler 发挥作用的地方。如果已经注册了一个 TryCatch（在撰写本文时我还没有注册，但会添加一个来尝试并验证）。
 此部分的代码如下：
-```c++
+```cpp
   v8::TryCatch* handler = try_catch_handler();
   handler->can_continue_ = true;
   handler->has_terminated_ = false;
@@ -159,24 +159,24 @@ void Isolate::ScheduleThrow(Object exception) {
 当 TryCatch 被创建时，其构造函数将调用 `RegisterTryCatchHandler`，该函数将设置 thread_local_top 的 try_catch_handler，该 handler 通过调用 `try_catch_handler()` 在上面被获取。
 
 在此之前，会调用 `IsJavaScriptHandlerOnTop`：
-```c++
+```cpp
 // 对于不可捕获的异常，JavaScript handler 不能在顶部。
 if (!is_catchable_by_javascript(exception)) return false;
 ```
-```c++
+```cpp
   return exception != ReadOnlyRoots(heap()).termination_exception();               
 }
 ```
 TODO: 我真的需要更好地理解这一点，以及捕获/处理异常的各种方式（从 C++ 和 JavaScript）。
 
 接下来（在 PropagatePendingExceptionToExternalTryCatch 中）我们有：
-```c++
+```cpp
   // 获取最顶层的 JS_ENTRY handler，如果不存在则不能在顶部。
   Address entry_handler = Isolate::handler(thread_local_top());                 
   if (entry_handler == kNullAddress) return false;
 ```
 接下来，我们有：
-```c++
+```cpp
   if (!IsExternalHandlerOnTop(exception)) {                                     
     thread_local_top()->external_caught_exception_ = false;                     
     return true;                                                                

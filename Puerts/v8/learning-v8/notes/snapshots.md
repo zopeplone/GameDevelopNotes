@@ -28,7 +28,7 @@ Usage: ./out/x64.release_gcc/mksnapshot [--startup-src=file] [--startup-blob=fil
 ```
 But the strange things is that the usage is never printed, instead the normal
 V8/D8 options. If we look in `src/snapshot/snapshot.cc` we can see:
-```c++
+```cpp
   // Print the usage if an error occurs when parsing the command line
   // flags or if the help flag is set.
   int result = i::FlagList::SetFlagsFromCommandLine(&argc, argv, true, false);
@@ -40,7 +40,7 @@ V8/D8 options. If we look in `src/snapshot/snapshot.cc` we can see:
   }
 ```
 `SetFlagsFromCommandLine` is defined in `src/flags/flags.cc`:
-```c++
+```cpp
 int FlagList::SetFlagsFromCommandLine(int* argc, char** argv, bool remove_flags) {
   ...
   if (FLAG_help) {
@@ -61,7 +61,7 @@ Usage: ./out/x64.release_gcc/mksnapshot --startup_src=... --startup_blob=... [ex
 
 What mksnapshot does is much the same start up of a normal V8 application, it
 has to initialize V8 itself (`src/snapshot/snapshot.cc`):
-```c++
+```cpp
   v8::V8::InitializeICUDefaultLocation(argv[0]);
   std::unique_ptr<v8::Platform> platform = v8::platform::NewDefaultPlatform();
   v8::V8::InitializePlatform(platform.get());
@@ -71,13 +71,13 @@ Notice that this is just was we have in [hello-world](../hello-world.cc) or
 in [v8_test_fixture.h](../test/v8_test_fixture.h).
 
 Next, we have:
-```c++
+```cpp
   SnapshotFileWriter snapshot_writer;
   snapshot_writer.SetSnapshotFile(i::FLAG_startup_src);
   snapshot_writer.SetStartupBlobFile(i::FLAG_startup_blob);
 ```
 `i::FLAG_startup_src` is defined in `src/flags/flag-definitions.h`:
-```c++
+```cpp
 DEFINE_STRING(startup_src, nullptr,
               "Write V8 startup as C++ src. (mksnapshot only)")
 
@@ -157,7 +157,7 @@ $ ../v8_src/v8/out/x64.release_gcc/mksnapshot --startup_src=gen/example_snapshot
 ```
 After this we can inspect `gen/example_snapshot.cc` which will contain the
 serialized snapshot in a byte array named `blob_data`.
-```c++
+```cpp
 #include "src/snapshot/snapshot.h"
 
 namespace v8 {
@@ -184,13 +184,13 @@ $ ls -l -h gen/example-blob.bin
 -rw-rw-r--. 1 danielbevenius danielbevenius 130K Jul 14 09:52 gen/example-blob.bin
 ```
 This binary can then be specified using:
-```c++
+```cpp
   V8::InitializeExternalStartupDataFromFile("../gen/example-blob.bin");
 ```
 
 `src/init/startup-data-util.cc` contains the implementation for this and notice
 that it is guarded by a macro:
-```c++
+```cpp
 void InitializeExternalStartupDataFromFile(const char* snapshot_blob) {
 #ifdef V8_USE_EXTERNAL_STARTUP_DATA
   LoadFromFile(snapshot_blob);
@@ -229,7 +229,7 @@ Context and then creates a snapshot using SnapshotCreator.
 
 SnapshotCreator creates the binary in a class named `StartupData `which can be
 found in `v8.h`:
-```c++
+```cpp
 class V8_EXPORT StartupData {
   bool CanBeRehashed() const;
   bool IsValid() const;
@@ -241,7 +241,7 @@ After creating the StartupData (which is called a blob (Binary Large Object)
 the V8 environment is disposed of. 
 Next, a new V8 environment is created but this time the Context is created using
 the StartupData:
-```c++
+```cpp
   Isolate::CreateParams create_params;
   // Specify the startup_data blob created earlier.
   create_params.snapshot_blob = &startup_data;
@@ -263,12 +263,12 @@ perform these tasks plus this is only for learning.
 ### Context::FromSnapshot
 This function can be used to deserialize a blob into a Context. This was used
 in the CreateSnapshot test:
-```c++
+```cpp
     Local<Context> context = Context::FromSnapshot(isolate, index).ToLocalChecked();
 ```
 We only passed in the isolate and the index above, but `FromSnapshot` also takes
 other arguments that have default values when not specified:
-```c++
+```cpp
 static MaybeLocal<Context> FromSnapshot(
       Isolate* isolate, size_t context_snapshot_index,
       DeserializeInternalFieldsCallback embedder_fields_deserializer =
@@ -279,14 +279,14 @@ static MaybeLocal<Context> FromSnapshot(
 ```
 
 In our case Context::FromSnapshot will call:
-```c++
+```cpp
 return NewContext(external_isolate, extensions, MaybeLocal<ObjectTemplate>(), 
                     global_object, index_including_default_context,             
                     embedder_fields_deserializer, microtask_queue)
 ```
 
 This will trickle down into bootstrapper.cc which has the following call:
-```c++
+```cpp
 if (isolate->initialized_from_snapshot()) {                                       
     Handle<Context> context;                                                        
     if (Snapshot::NewContextFromSnapshot(isolate, global_proxy,                     
@@ -298,7 +298,7 @@ if (isolate->initialized_from_snapshot()) {
   }              
 ```
 This call will land in snapshot.cc:
-```c++
+```cpp
 MaybeHandle<Context> Snapshot::NewContextFromSnapshot(
     Isolate* isolate, Handle<JSGlobalProxy> global_proxy, size_t context_index,
     v8::DeserializeEmbedderFieldsCallback embedder_fields_deserializer) {
@@ -321,7 +321,7 @@ MaybeHandle<Context> Snapshot::NewContextFromSnapshot(
 ```
 In this case the most interesting part is the
 ContextDeserializer::DeserializeContext call (src/snapshot/context-deserializer.cc):
-```c++
+```cpp
 MaybeHandle<Context> ContextDeserializer::DeserializeContext(
     Isolate* isolate, const SnapshotData* data, bool can_rehash,
     Handle<JSGlobalProxy> global_proxy,
@@ -348,7 +348,7 @@ These symbols are serialized and when V8 deserializes a snapshot it will try
 to match symbols to addresses. This is done using `external_references` which
 is a null terminated vector which is populated with the addresses to functions
 and then passed into SnapshotCreator:
-```c++
+```cpp
   std::vector<intptr_t> external_refs;
   external_refs.push_back(reinterpret_cast<intptr_t>(ExternalRefFunction));
   ...
@@ -357,7 +357,7 @@ and then passed into SnapshotCreator:
 ```
 After creating the blob and perhaps storing it in a file, it can later be
 used to create a new Context:
-```c++
+```cpp
   Isolate::CreateParams create_params;
   create_params.snapshot_blob = &startup_data;
   create_params.external_references = external_refs.data();
@@ -394,7 +394,7 @@ When an ExternalReferenceEncoder is created it is passed an isolate
 (lldb) br s -f external-reference-encoder.cc -l 34
 ```
 
-```c++
+```cpp
 ExternalReferenceEncoder::ExternalReferenceEncoder(Isolate* isolate) { 
   ...
   map_ = isolate->external_reference_map();                                     
@@ -425,7 +425,7 @@ ExternalReferenceEncoder::ExternalReferenceEncoder(Isolate* isolate) {
 ```
 Notice that the `map_` is retrieved from the Isolate which is of type
 AddressToIndexHashMap:
-```c++
+```cpp
 class AddressToIndexHashMap : public PointerToIndexHashMap<Address> {}; 
 ```
 Now, in our case `map_` is nullptr so a new map is created and also set
@@ -455,7 +455,7 @@ TODO: How is the actually used?
 So after we have created the StartupData blob and then use it when creating
 a new Isolate, the blob will be deserialised. In
 Deserializer::ReadSingleBytecodeData we then have:
-```c++
+```cpp
     case kApiReference: {                                                           
       uint32_t reference_id = static_cast<uint32_t>(source_.GetInt());              
       Address address;                                                              
@@ -484,7 +484,7 @@ Deserializer::ReadSingleBytecodeData we then have:
 So in the blob the current source_ position is of type `kApiReference` type and
 the value is an index into the api_external_references array. This address
 is then written to the using WriteAddress which does a memory copy:
-```c++
+```cpp
 template <typename TSlot>
 int Deserializer::WriteAddress(TSlot dest, Address value) {
   base::Memcpy(dest.ToVoidPtr(), &value, kSystemPointerSize);
@@ -506,7 +506,7 @@ will be called in this case.
 
 ### SnapshotCreator
 In the constructor of SnapshotCreator we have the following code:
-```c++
+```cpp
 SnapshotCreator::SnapshotCreator(Isolate* isolate,
                                  const intptr_t* external_references,
                                  StartupData* existing_snapshot) {
@@ -514,7 +514,7 @@ SnapshotCreator::SnapshotCreator(Isolate* isolate,
 }
 ```
 `SnapshotCreatorData` is an internal struct that has the following members:
-```c++
+```cpp
   explicit SnapshotCreatorData(Isolate* isolate)
       : isolate_(isolate),
         default_context_(),
@@ -530,7 +530,7 @@ SnapshotCreator::SnapshotCreator(Isolate* isolate,
   bool created_;
 ```
 Next, in the constructor we have:
-```c++
+```cpp
   i::Isolate* internal_isolate = reinterpret_cast<i::Isolate*>(isolate);
   internal_isolate->set_array_buffer_allocator(&data->allocator_);
   internal_isolate->set_api_external_references(external_references);
@@ -541,7 +541,7 @@ The casting to the internal isolate is something we have seen before. After that
 the arraybuffer allocator will be set followed by the external references. 
 `set_api_external_references` is generated by the preprocessor macro
 `ISOLATE_INIT_LIST` which can be found in src/execution/isolate.h:
-```c++
+```cpp
 #define GLOBAL_ACCESSOR(type, name, initialvalue)                \
   inline type name() const {                                     \
     DCHECK(OFFSET_OF(Isolate, name##_) == name##_debug_offset_); \
@@ -566,7 +566,7 @@ setter will be named `set_api_external_references`:
 ```
 Next, the serializer is enabled and the Isolate Entered followed by the creation
 of a StartupData pointer:
-```c++
+```cpp
   const StartupData* blob = existing_snapshot
                                 ? existing_snapshot
                                 : i::Snapshot::DefaultSnapshotBlob();
@@ -577,12 +577,12 @@ like node_mkshapshot also produces a C++ file, this one is names snapshot.cc,
 and we are setting the StartupData pointer to point to it.
 After that the StartupData pointer is set on the internal_isolate and
 Snapshot::Initialize is called:
-```c++
+```cpp
     internal_isolate->set_snapshot_blob(blob);
     i::Snapshot::Initialize(internal_isolate);
 ```
 Snapshot::Initialize can be found in src/snapshot/snapshot.cc:
-```c++
+```cpp
   const v8::StartupData* blob = isolate->snapshot_blob();
   SnapshotImpl::CheckVersion(blob);
   CHECK(VerifyChecksum(blob));
@@ -598,7 +598,7 @@ Snapshot::Initialize can be found in src/snapshot/snapshot.cc:
 ```
 
 `InitWithSnapshot` will call `Init`
-```c++
+```cpp
 #define ASSIGN_ELEMENT(CamelName, hacker_name)                  \
   isolate_addresses_[IsolateAddressId::k##CamelName##Address] = \
       reinterpret_cast<Address>(hacker_name##_address());
@@ -609,7 +609,7 @@ This can be expanded using the preprocessor:
 ```console
 $ g++ -Iout/learning_v8/gen -Iinclude -I. -E src/execution/isolate.cc
 ```
-```c++
+```cpp
 isolate_addresses_[IsolateAddressId::kHandlerAddress] = reinterpret_cast<Address>(handler_address());
 isolate_addresses_[IsolateAddressId::kCEntryFPAddress] = reinterpret_cast<Address>(c_entry_fp_address());
 isolate_addresses_[IsolateAddressId::kCFunctionAddress] = reinterpret_cast<Address>(c_function_address());
@@ -632,17 +632,17 @@ isolate_addresses_[IsolateAddressId::kJSEntrySPAddress] =
     reinterpret_cast<Address>(js_entry_sp_address());
 ```
 Next CodeRanges will be initialized.
-```c++
+```cpp
   InitializeCodeRanges();
 ```
 I'm going to skip along here a little as I'm most interested in the external
 references and their usage in this function:
-```c++
+```cpp
   isolate_data_.external_reference_table()->Init(this);
 ```
 So isolate_data has a pointer to an ExternalReferenceTable and `init` will land
 in src/codegen/external-reference-table.cc:
-```c++
+```cpp
 void ExternalReferenceTable::Init(Isolate* isolate) {
   int index = 0;
 
@@ -662,7 +662,7 @@ void ExternalReferenceTable::Init(Isolate* isolate) {
 ```
 Lets take a look at these Add functions and see what they are doing.
 First, `ref_addr_` is an array of v8::internal::Address's:
-```c++
+```cpp
 void ExternalReferenceTable::Add(Address address, int* index) {                 
   ref_addr_[(*index)++] = address;                                              
 }
@@ -682,7 +682,7 @@ first call to Add:
   [1] = 16045690975706529519
 ```
 Next, we have:
-```c++
+```cpp
   AddReferences(isolate, &index);
 ```
 AddReferences has a few macros which can be expanded using:
@@ -691,7 +691,7 @@ $ g++ -Iout/learning_v8/gen -Iinclude -I. -E src/codegen/external-reference-tabl
 ```
 
 Lets take a concrete example:
-```c++
+```cpp
 Add(ExternalReference::abort_with_reason().address(), index);
 ```
 ```console
@@ -699,7 +699,7 @@ Add(ExternalReference::abort_with_reason().address(), index);
 (v8::internal::ExternalReference (*)()) $19 = 0x00007ffff610069e (libv8.so`v8::internal::ExternalReference::abort_with_reason() at external-reference.cc:420:1)
 ```
 And if we look in external-reference.cc we find:
-```c++
+```cpp
 FUNCTION_REFERENCE(abort_with_reason, i::abort_with_reason)
 
 ExternalReference ExternalReference::abort_with_reason() {
@@ -709,7 +709,7 @@ ExternalReference ExternalReference::abort_with_reason() {
 }
 ```
 Now, `abort_with_reason` can be found in src/codegen/external-reference.cc:
-```c++
+```cpp
 void abort_with_reason(int reason) {                                                  
   if (IsValidAbortReason(reason)) {                                                   
     const char* message = GetAbortReason(static_cast<AbortReason>(reason));     
@@ -730,13 +730,13 @@ But we have not seen any of the external references that we passed in, these
 are still V8's references as far as I can tell. And also notice that these
 are added to the Isolate when it is created. When we later create a context
 is when we pass in the StartupData:
-```c++
+```cpp
   Local<Context> context = Context::FromSnapshot(isolate, index).ToLocalChecked();
 ```
 
 After we have returned from this function we will be back in Isolate::Init
 and after stepping through a little we come to:
-```c++
+```cpp
    if (create_heap_objects) {                                                  
       heap_.read_only_space()->ClearStringPaddingIfNeeded();                    
       read_only_heap_->OnCreateHeapObjectsComplete(this);                       
@@ -749,7 +749,7 @@ So we are creating a new StartupDeserializer and passing in the current Isolate,
 the startup_snapshot_data.
 
 Now in Deserializer::Deserializer we find the following:
-```c++
+```cpp
 #ifdef DEBUG
  num_api_references_ = 0;                                                      
   // The read-only deserializer is run by read-only heap set-up before the          
@@ -766,16 +766,16 @@ Now in Deserializer::Deserializer we find the following:
 ```
 This is only for debug but these are the references that were set earlier in
 IsolateData:
-```c++ 
+```cpp 
   internal_isolate->set_api_external_references(external_references);
 ```
 After this we the StartupSerializer constructor is finished and the next line (
 now aback in isolate.cc and Isolate::Init) we have:
-```c++
+```cpp
   startup_deserializer.DeserializeIntoIsolate();
 ``` 
 In src/snapshot/startup-deserializer.cc we find the following:
-```c++
+```cpp
 void StartupDeserializer::DeserializeIntoIsolate() {
 {                                                                             
   ...
@@ -818,7 +818,7 @@ void Deserializer::ReadData(FullMaybeObjectSlot start,
 ```
 If we look at ReadSingleBytecodeData we can find rather large switch statement
 that takes the data passed in:
-```c++
+```cpp
   switch (data) {
     ....
 
@@ -863,7 +863,7 @@ serialize/deserialize them (at least that is my understading so far).
 
 When adding a Context to SnapshotCreator there is a parameter named
 `callback` which is of type `SerializeInternalFieldsCallback` :
-```c++
+```cpp
 size_t AddContext(Local<Context> context,
     SerializeInternalFieldsCallback callback = SerializeInternalFieldsCallback());
 
@@ -891,7 +891,7 @@ a break point can be set:
 ````
 
 `src/snapshot/context-serializer.cc` contains the following function:
-```c++
+```cpp
 bool ContextSerializer::SerializeJSObjectWithEmbedderFields(                    
     Handle<HeapObject> obj) {     
 ```
@@ -901,7 +901,7 @@ Lets stick a break point in that function and work backwards from there:
 ```
 Starting from Snapshot::Create, which will iterate over all the contexts passed
 in:
-```c++
+```cpp
 v8::StartupData Snapshot::Create(
     Isolate* isolate, std::vector<Context>* contexts,
     const std::vector<SerializeInternalFieldsCallback>& embedder_fields_serializers,
@@ -921,15 +921,15 @@ Notice that each context will have a ContextSerializer created for it, and it
 gets passed the SerializeInternalFieldsCallback and Serialized will be called
 on that instance passing in the first context. So that leads us to
 ContextSeralizer::Serialize:
-```c++
+```cpp
 void ContextSerializer::Serialize(Context* o, const DisallowGarbageCollection& no_gc) {
-```c++
+```cpp
   VisitRootPointer(Root::kStartupObjectCache, nullptr, FullObjectSlot(o));
 ```
 The second argument is for the description (cont char*). VisitRootPointers can
 be found in visitors.h and will delegate to Serializer::VisitRootPointers:
 (src/snapshot/serializer.cc)
-```c++
+```cpp
 void Serializer::VisitRootPointers(Root root, const char* description,          
                                    FullObjectSlot start, FullObjectSlot end) {  
   for (FullObjectSlot current = start; current < end; ++current) {              
@@ -938,7 +938,7 @@ void Serializer::VisitRootPointers(Root root, const char* description,
 }
 ```
 And SerializeRootObject will call SerializeObject in our case:
-```c++
+```cpp
 void Serializer::SerializeRootObject(FullObjectSlot slot) {
   Object o = *slot;
   if (o.IsSmi()) {
@@ -959,7 +959,7 @@ void Serializer::SerializeObject(Handle<HeapObject> obj) {
 ```
 This will bring us into ContextSerializer::SerializeObjectImpl
 (src/snapshot/context-serializer.cc):
-```c++
+```cpp
 void ContextSerializer::SerializeObjectImpl(Handle<HeapObject> obj) {
   ...
   if (SerializeJSObjectWithEmbedderFields(obj)) {
@@ -969,7 +969,7 @@ void ContextSerializer::SerializeObjectImpl(Handle<HeapObject> obj) {
 }
 ```
 `SerializeJSObjectWithEmbedderFields` (src/snapshot/context-serializer.cc):
-```c++
+```cpp
 bool ContextSerializer::SerializeJSObjectWithEmbedderFields(Handle<HeapObject> obj) {
   ...
   std::vector<StartupData> serialized_data;
@@ -994,7 +994,7 @@ bool ContextSerializer::SerializeJSObjectWithEmbedderFields(Handle<HeapObject> o
 Notice that this call to the callback, `serialize_embedder_fields_.callback`
 returns an instance of StartupData, which is then added to the serialized_data
 vector:
-```c++
+```cpp
 class V8_EXPORT StartupData {                                                   
    public:                                                                        
     bool CanBeRehashed() const;                                                        
@@ -1004,7 +1004,7 @@ class V8_EXPORT StartupData {
   };          
 ```
 A little further down we then have:
-```c++
+```cpp
   for (int i = 0; i < embedder_fields_count; i++) {
     StartupData data = serialized_data[i];
     if (DataIsEmpty(data)) continue;
@@ -1032,7 +1032,7 @@ Breakpoint 4: where = snapshot_test`SnapshotTest_InternalFields_Test::TestBody()
 (lldb) s
 ```
 In SnapshotCreator (api.cc) we can find the following:
-```c++
+```cpp
 size_t SnapshotCreator::AddContext(Local<Context> context,
                                    SerializeInternalFieldsCallback callback) {
   SnapshotCreatorData* data = SnapshotCreatorData::cast(data_);
@@ -1043,18 +1043,18 @@ size_t SnapshotCreator::AddContext(Local<Context> context,
   return index;
 ```
 So the SnapshotCreateData instance has a vector that contains these callback:
-```c++
+```cpp
 std::vector<SerializeInternalFieldsCallback> embedder_fields_serializers_;
 ```
 So that is all `AddContext` does. Lets take a look at the call to actually
 create the blob:
-```c++
+```cpp
   startup_data = snapshot_creator.CreateBlob(SnapshotCreator::FunctionCodeHandling::kKeep);
 ```
 
 ### Snapshot binary format
 The layout of the binary snapshot can be found in `src/snapshot/snapshot.cc`:
-```c++
+```cpp
   // Snapshot blob layout:
   // [0] number of contexts N
   // [1] rehashability

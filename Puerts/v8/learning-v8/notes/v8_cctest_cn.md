@@ -3,7 +3,7 @@ V8 的单元测试不像本项目那样使用 gtest，本文档包含关于 `CcT
 
 ### CcTest
 这是测试驱动程序，即它注册和运行测试，可以在 `test/cctest/cctest.h` 中找到：
-```c++
+```cpp
 class CcTest {
  public:
   using TestFunction = void();
@@ -11,13 +11,13 @@ class CcTest {
          bool enabled, bool initialize);
 ```
 因此，要注册一个测试，可以使用上述构造函数，但定义了宏来简化此过程。例如，要注册一个名为 `DoSomething` 的测试，只需编写：
-```c++
+```cpp
 TEST(DoSomething) {
   ...
 }
 ```
 它将被预处理器展开为：
-```c++
+```cpp
 CcTest register_test_DoSomething(TestDoSomething, __FILE__, DoSomething, true, true) {
   ...
 }
@@ -45,7 +45,7 @@ $ env ASAN_OPTIONS="detect_odr_violation=0" ./out/learning_v8/unittests --gtest_
 ```
 
 有时可能需要使某些函数对测试可用。例如，我在向 `test/cctest/heap/test-heap.cc` 添加测试时遇到了这种情况。有一个头文件 `test/cctest/heap/heap-tester.h`，其中包含以下宏：
-```c++
+```cpp
 // 应有权访问 {v8::internal::Heap} 私有方法的测试。
 // 这些测试需要使用 HEAP_TEST(Name) { ... } 来定义。
 #define HEAP_TEST_METHODS(V)                                \
@@ -86,7 +86,7 @@ See //build/config/v8_target_cpu.gni:5:1: whence it was imported.
 本节展示了一个 V8 中参数化测试的示例，并记录了我使用 gcc 看到的一个编译器警告。
 
 涉及的测试是 `TEST_P(InstructionSelectorChangeInt32ToInt64Test, ChangeInt32ToInt64WithLoad)`，位于 `test/unittests/compiler/x64/instruction-selector-x64-unittest.cc`：
-```c++
+```cpp
 namespace {
 struct LoadWithToInt64Extension {
   MachineType type;
@@ -119,7 +119,7 @@ INSTANTIATE_TEST_SUITE_P(InstructionSelectorTest,
                          ::testing::ValuesIn(kLoadWithToInt64Extensions));
 ```
 注意 `using` 语句，我们可以在 `test/unittests/compiler/backend/instruction-selector-unittest.h` 中找到 `InstructionSelectorTestWithParam`：
-```c++
+```cpp
 template <typename T>
 class InstructionSelectorTestWithParam
     : public InstructionSelectorTest,
@@ -148,7 +148,7 @@ warning: '...' has a field '...' whose type uses the anonymous namespace [-Wsubo
 ```console
 $ g++ -I./deps/googletest/googletest/include -E test/parameterized_test.cc
 ```
-```c++
+```cpp
 class SomeParamTest_Something_Test : public SomeParamTest { 
   public: 
     SomeParamTest_Something_Test() {} 

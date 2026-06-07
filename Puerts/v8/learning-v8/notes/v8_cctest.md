@@ -5,7 +5,7 @@ contains notes about how `CcTest` works.
 ### CcTest
 This is the test driver, by which I mean it registers and runs tests, and can 
 `test/cctest/cctest.h`:
-```c++
+```cpp
 class CcTest {
  public:
   using TestFunction = void();
@@ -15,13 +15,13 @@ class CcTest {
 So to register a test the above constructor can be used but there are macros
 defined to simply this. For example, to register a test named `DoSomething` one
 can simply write:
-```c++
+```cpp
 TEST(DoSomething) {
   ...
 }
 ```
 Which will be expanded by the preprocessor into:
-```c++
+```cpp
 CcTest register_test_DoSomething(TestDoSomething, __FILE__, DoSomething, true, true) {
   ...
 }
@@ -56,7 +56,7 @@ $ env ASAN_OPTIONS="detect_odr_violation=0" ./out/learning_v8/unittests --gtest_
 One might have to make certain functions available to tests. For example, I ran
 into this when adding a test to test/cctest/heap/test-heap.cc. There is header
 test/cctest/heap/heap-tester.h which has the following macro:
-```c++
+```cpp
 // Tests that should have access to private methods of {v8::internal::Heap}.
 // Those tests need to be defined using HEAP_TEST(Name) { ... }.
 #define HEAP_TEST_METHODS(V)                                \
@@ -101,7 +101,7 @@ a compiler warning that I'm seeing with gcc.
 
 The test in question is TEST_P(InstructionSelectorChangeInt32ToInt64Test, ChangeInt32ToInt64WithLoad)
   in test/unittests/compiler/x64/instruction-selector-x64-unittest.cc:
-```c++
+```cpp
 namespace {
 struct LoadWithToInt64Extension {
   MachineType type;
@@ -135,7 +135,7 @@ INSTANTIATE_TEST_SUITE_P(InstructionSelectorTest,
 ```
 Notice the `using` statement and we can find InstructionSelectorTestWithParam in
 test/unittests/compiler/backend/instruction-selector-unittest.h:
-```c++
+```cpp
 template <typename T>
 class InstructionSelectorTestWithParam
     : public InstructionSelectorTest,
@@ -175,7 +175,7 @@ To see what the gtest macros expand to the following command can be used:
 ```console
 $ g++ -I./deps/googletest/googletest/include -E test/parameterized_test.cc
 ```
-```c++
+```cpp
 class SomeParamTest_Something_Test : public SomeParamTest { 
   public: 
     SomeParamTest_Something_Test() {} 

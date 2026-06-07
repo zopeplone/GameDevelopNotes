@@ -32,7 +32,7 @@ V8 中有多种不同的 String 类型，针对各种情况进行了优化。
 `Name` 继承自 HeapObject，任何可以用作属性名的东西都应该继承 Name。
 
 查看 `include/v8.h` 中的声明，我们找到以下内容：
-```c++
+```cpp
     int GetIdentityHash();
     static Name* Cast(Value* obj)
 ```
@@ -86,7 +86,7 @@ å
 #### String
 String 继承自 `Name`，具有长度和内容。内容可以由 1 或 2 字节的字符组成。
 查看 `include/v8.h` 中的声明，我们找到以下内容：
-```c++
+```cpp
     enum Encoding {
       UNKNOWN_ENCODING = 0x1,
       TWO_BYTE_ENCODING = 0x0,
@@ -99,7 +99,7 @@ String 继承自 `Name`，具有长度和内容。内容可以由 1 或 2 字节
 ```
 示例用法见 [test/string_test.cc](./test/string_test.cc)。
 在查看函数时，我看到了一个从 String 返回实际字节的函数。你可以使用以下方式以 utf8 格式获取：
-```c++
+```cpp
     String::Utf8Value print_value(joined);
     std::cout << *print_value << '\n';
 ```
@@ -127,11 +127,11 @@ String 继承自 `Name`，具有长度和内容。内容可以由 1 或 2 字节
 此函数在 b097a8e5de7 中引入。
 
 创建 `Local<String>` 的常规方式是使用：
-```c++
+```cpp
   Local<String> str = String::NewFromUtf8(isolate_, "åäö").ToLocalChecked();    
 ```
 现在，`String::NewFromUtf8` 如下所示：
-```c++
+```cpp
 MaybeLocal<String> String::NewFromUtf8(Isolate* isolate, const char* data,           
                                        NewStringType type, int length) {        
   NEW_STRING(isolate, String, NewFromUtf8, char, data, type, length);           
@@ -143,7 +143,7 @@ MaybeLocal<String> String::NewFromUtf8(Isolate* isolate, const char* data,
 ```console
 $ g++ -I./out/x64.release_gcc/gen -I./include -I. -E src/api/api.cc > output
 ```
-```c++
+```cpp
 MaybeLocal<String> String::NewFromUtf8(Isolate* isolate, const char* data,      
                                        NewStringType type, int length) {        
   MaybeLocal<String> result;
@@ -169,7 +169,7 @@ MaybeLocal<String> String::NewFromUtf8(Isolate* isolate, const char* data,
 }
 ```
 当使用 string literal 时，有许多检查是不需要的，而有些可以在编译时检查，例如最大长度。
-```c++
+```cpp
   template <int N>                                                              
   static V8_WARN_UNUSED_RESULT Local<String> NewFromUtf8Literal(                
       Isolate* isolate, const char (&literal)[N],                                    

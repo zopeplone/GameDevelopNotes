@@ -34,20 +34,6 @@
               "icon": "lucide-file",
               "title": "Puerts中JS与UE的对象映射机制-概述篇"
             }
-          },
-          {
-            "id": "40e817002e52ea9e",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Puerts/源码学习/Puerts中JS与UE的对象映射机制-详解篇.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "Puerts中JS与UE的对象映射机制-详解篇"
-            }
           }
         ],
         "currentTab": 1
@@ -238,9 +224,25 @@
   },
   "active": "a2290e7e1321cadd",
   "lastOpenFiles": [
-    "Puerts/v8/个人学习/v8基础概念.md",
-    "Puerts/源码学习/Puerts中JS与UE的对象映射机制-概述篇.md",
+    "教程/漫威争锋配置.md",
+    "教程/漫威争锋复刻.md",
+    "教程/新建 文本文档.txt",
+    "新建文件夹",
+    "教程/漫威争锋.md",
+    "教程/assets/30bdb2000fcc9dc0e2b5036306f1e861_MD5.png",
+    "教程/assets/4401d51ba885c9dfd774e91e6387a9be_MD5.png",
+    "教程/assets/2accbe18aa865fb70c498b872b6a517f_MD5.png",
+    "教程/assets/0d8d6daeb78ceae6c627dca04ec33c0c_MD5.png",
+    "教程/assets/19e8cbc427a6ea921a52fc029a3aaea9_MD5.png",
+    "教程/assets/9a735302d9fceee5139fd8a43e45c0f8_MD5.png",
+    "教程/assets/3c989df8ce04f54ec6b359c98a40ec69_MD5.png",
+    "教程/assets/df134a770cf1cefed23c94c5ae5d953b_MD5.png",
+    "教程/assets/b2a76af467d25474568eebe0c271d7bc_MD5.png",
+    "教程/assets/593a47bb765b4a4ed2eee076af8d56f6_MD5.png",
+    "教程/assets",
     "Puerts/源码学习/Puerts中JS与UE的对象映射机制-详解篇.md",
+    "Puerts/源码学习/Puerts中JS与UE的对象映射机制-概述篇.md",
+    "Puerts/v8/个人学习/v8基础概念.md",
     "Puerts/v8/learning-v8/README_cn.md",
     "Puerts/源码学习/Puerts初始化.md",
     "Puerts/源码学习/assets",
@@ -262,28 +264,12 @@
     "Puerts/v8/v8-JavaScript-Documents/chap17-1026/README.md",
     "Puerts/v8/个人学习",
     "Puerts/v8/learning-v8/README.md",
-    "Puerts/v8/v8-JavaScript-Documents/v8.png",
-    "Puerts/v8/v8-JavaScript-Documents/chap9-1002/f2.png",
-    "Puerts/v8/v8-JavaScript-Documents/chap9-1002/f1.png",
     "Puerts/v8/v8-JavaScript-Documents/chap9-1002",
     "Puerts/v8/v8-JavaScript-Documents/chap8-0929/README.md",
-    "Puerts/v8/v8-JavaScript-Documents/chap8-0929/f2.png",
-    "Puerts/v8/v8-JavaScript-Documents/chap8-0929/f1.png",
-    "Puerts/v8/v8-JavaScript-Documents/chap8-0929",
-    "Puerts/v8/v8-JavaScript-Documents/chap7-0925/f4.png",
     "Puerts/v8/v8-JavaScript-Documents/chap7-0925/README.md",
-    "Puerts/v8/v8-JavaScript-Documents/chap7-0925/f3.png",
-    "Puerts/v8/v8-JavaScript-Documents/chap7-0925/f2.png",
-    "Puerts/v8/v8-JavaScript-Documents/chap7-0925/f1.png",
-    "Puerts/v8/v8-JavaScript-Documents/chap7-0925",
     "Puerts/v8/v8-JavaScript-Documents/chap6-0922/README.md",
-    "Puerts/v8/v8-JavaScript-Documents/chap6-0922/f6.png",
-    "Puerts/v8/v8-JavaScript-Documents/chap6-0922",
     "Puerts/v8/v8-JavaScript-Documents/chap56/readme.md",
     "Puerts/v8/v8-JavaScript-Documents/chap55/readme.md",
-    "Puerts/v8/v8-JavaScript-Documents/chap54/readme.md",
-    "Puerts/v8/v8-JavaScript-Documents/chap53/readme.md",
-    "Puerts/v8/v8-JavaScript-Documents/chap52/readme.md",
     "UE知识/Gameplay系统/未命名.canvas"
   ]
 }

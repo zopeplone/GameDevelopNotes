@@ -11,28 +11,17 @@
             "id": "d3e789258a3acbe7",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
-              "icon": "lucide-file",
-              "title": "v8基础概念"
-            }
-          },
-          {
-            "id": "a2290e7e1321cadd",
-            "type": "leaf",
-            "state": {
               "type": "markdown",
               "state": {
-                "file": "Puerts/源码学习/Puerts中JS与UE的对象映射机制-概述篇.md",
+                "file": "随笔/漫威争锋/英雄配置详解/惩罚者.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Puerts中JS与UE的对象映射机制-概述篇"
+              "title": "惩罚者"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -91,7 +80,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 337.5
+    "width": 247.5
   },
   "right": {
     "id": "fb0d0ef2083d4f66",
@@ -169,13 +158,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Puerts/源码学习/Puerts中JS与UE的对象映射机制-概述篇.md",
+                "file": "随笔/漫威争锋/英雄配置详解/惩罚者.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Puerts中JS与UE的对象映射机制-概述篇 的大纲"
+              "title": "大纲"
             }
           },
           {
@@ -203,7 +192,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 254.5
+    "width": 415.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -219,40 +208,41 @@
       "obsidian-local-images-plus:Local Images Plus  0.16.4\r\nLocalize attachments (plugin folder)": false
     }
   },
-  "active": "a2290e7e1321cadd",
+  "active": "d3e789258a3acbe7",
   "lastOpenFiles": [
-    "教程/漫威争锋配置.md",
-    "教程/漫威争锋复刻.md",
-    "教程/新建 文本文档.txt",
-    "新建文件夹",
-    "教程/漫威争锋.md",
-    "教程/assets/30bdb2000fcc9dc0e2b5036306f1e861_MD5.png",
-    "教程/assets/4401d51ba885c9dfd774e91e6387a9be_MD5.png",
-    "教程/assets/2accbe18aa865fb70c498b872b6a517f_MD5.png",
-    "教程/assets/0d8d6daeb78ceae6c627dca04ec33c0c_MD5.png",
-    "教程/assets/19e8cbc427a6ea921a52fc029a3aaea9_MD5.png",
-    "教程/assets/9a735302d9fceee5139fd8a43e45c0f8_MD5.png",
-    "教程/assets/3c989df8ce04f54ec6b359c98a40ec69_MD5.png",
-    "教程/assets/df134a770cf1cefed23c94c5ae5d953b_MD5.png",
-    "教程/assets/b2a76af467d25474568eebe0c271d7bc_MD5.png",
-    "教程/assets/593a47bb765b4a4ed2eee076af8d56f6_MD5.png",
-    "教程/assets",
-    "Puerts/源码学习/Puerts中JS与UE的对象映射机制-详解篇.md",
-    "Puerts/源码学习/Puerts中JS与UE的对象映射机制-概述篇.md",
+    "随笔/漫威争锋/07-UE5.8源码依据与落地检查表.md",
+    "随笔/漫威争锋/附录A-字段字典与资产索引.md",
+    "随笔/漫威争锋/06-全英雄配置图谱.md",
+    "随笔/漫威争锋/05-Timeline-Cue与网络预测.md",
+    "随笔/漫威争锋/英雄配置详解/惩罚者.md",
+    "随笔/漫威争锋/英雄配置详解/新建文本文档.txt",
+    "随笔/漫威争锋/英雄配置详解",
+    "随笔/漫威争锋/新建文件夹",
+    "随笔/漫威争锋/README.md",
+    "随笔/春招面试回顾.md",
+    "随笔/漫威争锋/漫威争锋GAS架构讲座.md",
+    "随笔/漫威争锋/03-Effect-Buff-CDR配置手册.md",
+    "随笔/漫威争锋/02-Ability配置手册.md",
+    "随笔/漫威争锋/assets",
+    "随笔/漫威争锋/01-架构总览与证据边界.md",
+    "物理/UE5.8_UniformSpatialHash空间查询系统设计.md",
+    "随笔/漫威争锋GAS架构讲座.md",
+    "随笔/漫威争锋GAS架构实现.md",
+    "物理/assets",
+    "随笔/assets/f951e7f685c27fdf2b79292ff73b283b_MD5.png",
+    "随笔/assets/24d0ea193a90b5d6e99ae8df8733d826_MD5.png",
+    "随笔/assets/22bac87469db3c481998242512257064_MD5.png",
+    "随笔/assets/4401d51ba885c9dfd774e91e6387a9be_MD5.png",
+    "随笔/assets/04e438a1cb0f3d522e705ab7735abb91_MD5.png",
+    "随笔/assets/d419cfa6f99e928228d120f55675b0d2_MD5.png",
+    "随笔/assets/b2a76af467d25474568eebe0c271d7bc_MD5.png",
+    "随笔/assets/92e34fb2ed33fd72156a3e196aa250d0_MD5.png",
+    "随笔/assets/506c7038539ec947cd42fbaa5b96a043_MD5.png",
+    "随笔/assets/2accbe18aa865fb70c498b872b6a517f_MD5.png",
+    "随笔/assets",
+    "something.md",
     "Puerts/v8/个人学习/v8基础概念.md",
     "Puerts/v8/learning-v8/README_cn.md",
-    "Puerts/源码学习/Puerts初始化.md",
-    "Puerts/源码学习/assets",
-    "Puerts/v8/个人学习/v8嵌入.md",
-    "Puerts/源码学习/函数调用与回调.md",
-    "Puerts/Puerts插件修改.md",
-    "Puerts/v8/个人学习/assets",
-    "Puerts/鸣潮反编译/纯ai混淆js转ts.md",
-    "Puerts/鸣潮反编译/鸣潮混淆js转ts.md",
-    "Puerts/鸣潮反编译/assets",
-    "Sifu复刻/系统架构.excalidraw.md",
-    "Puerts/鸣潮反编译",
-    "解包",
     "Puerts/v8/v8-JavaScript-Documents/readme.md",
     "Puerts/v8/v8-JavaScript-Documents/chap1-0829/README.md",
     "Puerts/v8/learning-v8/notes/heap.md",
@@ -263,10 +253,9 @@
     "Puerts/v8/learning-v8/README.md",
     "Puerts/v8/v8-JavaScript-Documents/chap9-1002",
     "Puerts/v8/v8-JavaScript-Documents/chap8-0929/README.md",
+    "Puerts/v8/v8-JavaScript-Documents/chap8-0929",
     "Puerts/v8/v8-JavaScript-Documents/chap7-0925/README.md",
-    "Puerts/v8/v8-JavaScript-Documents/chap6-0922/README.md",
-    "Puerts/v8/v8-JavaScript-Documents/chap56/readme.md",
-    "Puerts/v8/v8-JavaScript-Documents/chap55/readme.md",
+    "Puerts/v8/v8-JavaScript-Documents/chap7-0925",
     "UE知识/Gameplay系统/未命名.canvas"
   ]
 }

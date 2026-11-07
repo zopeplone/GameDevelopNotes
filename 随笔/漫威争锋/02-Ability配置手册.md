@@ -67,12 +67,12 @@ AbilityItem 是策划的一站式入口。全量解包中出现的字段可分�
 
 ### 3.1 授予与特殊配置
 
-| 字段 | 用法 |
-|---|---|
-| `GrantedAbility` | 必填，指向 GameplayAbility 类 |
-| `GrantedAbilityDataSet` | 技能所需额外数据集 |
-| `ExtendConfigInline` | 技能专有配置对象；只放该模板真正需要的参数 |
-| `ActivateData` | 通用激活参数 |
+| 字段                      | 用法                      |
+| ----------------------- | ----------------------- |
+| `GrantedAbility`        | 必填，指向 GameplayAbility 类 |
+| `GrantedAbilityDataSet` | 技能所需额外数据集               |
+| `ExtendConfigInline`    | 技能专有配置对象；只放该模板真正需要的参数   |
+| `ActivateData`          | 通用激活参数                  |
 
 `ExtendConfigInline` 应使用 `Instanced`/内联对象语义，跟随 AbilityItem 生命周期。不要把英雄专属字段不断加入 MarvelAbilityItem 主类；当前解包已有至少 157 种 `Config_*`，说明多态扩展是预期设计。
 
